@@ -1,0 +1,2074 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fleet Compliance Dashboard</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        :root {
+            --bg-body: #171b21;
+            --bg-sidebar: #1d2127;
+            --bg-card: #22272d;
+            --bg-table-header: #282d34;
+            --bg-table-row: #22272d;
+            --bg-table-row-hover: #2a3038;
+            
+            --text-primary: #ffffff;
+            --text-secondary: #94a0b0;
+            --text-muted: #6b7280;
+            
+            --accent-green-light: #4ade80;
+            --accent-green: #22c55e;
+            --accent-green-dark: #16a34a;
+            --accent-teal: #06b6d4;
+            --accent-blue: #3b82f6;
+            
+            --status-red: #ef4444;
+            --status-yellow: #f59e0b;
+            
+            --border-color: #30363d;
+            
+            --font-main: 'Inter', sans-serif;
+            --border-radius: 6px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-main);
+            background-color: var(--bg-body);
+            color: var(--text-primary);
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+            font-size: 13px;
+        }
+
+        /* --- Sidebar --- */
+        .sidebar {
+            width: 60px;
+            background-color: var(--bg-sidebar);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 1rem;
+            z-index: 10;
+            flex-shrink: 0;
+        }
+        
+        .sidebar-logo {
+            width: 30px;
+            height: 30px;
+            background: linear-gradient(135deg, var(--accent-green), var(--accent-teal));
+            border-radius: 8px;
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #000;
+        }
+
+        .nav-item {
+            width: 100%;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .nav-item:hover {
+            color: var(--text-primary);
+        }
+
+        .nav-item.active {
+            color: var(--accent-green);
+            background-color: rgba(34, 197, 94, 0.1);
+        }
+
+        .nav-item.active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background-color: var(--accent-green);
+        }
+
+        .icon {
+            width: 20px;
+            height: 20px;
+            fill: currentColor;
+        }
+
+        /* --- Main Content --- */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .view-section {
+            display: none;
+            flex: 1;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .view-section.active {
+            display: flex;
+        }
+
+        /* --- Top Header --- */
+        .top-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1.5rem 2rem;
+            border-bottom: 1px solid var(--border-color);
+            flex-wrap: wrap;
+            gap: 1rem;
+            background-color: var(--bg-body);
+        }
+
+        .dashboard-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            flex-shrink: 0;
+            text-transform: uppercase;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--accent-green);
+            color: var(--accent-green);
+            padding: 0.4rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            font-family: var(--font-main);
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .btn-outline:hover {
+            background: rgba(34, 197, 94, 0.1);
+        }
+        
+        .btn-outline.danger {
+            border-color: var(--status-red);
+            color: var(--status-red);
+        }
+        
+        .btn-outline.danger:hover {
+            background: rgba(239, 68, 68, 0.1);
+        }
+
+        /* --- Dashboard Grid --- */
+        .dashboard-layout {
+            display: flex;
+            flex: 1;
+            padding: 1.5rem;
+            gap: 1.5rem;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        .main-column {
+            flex: 3;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            min-width: 0; 
+        }
+
+        .side-column {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            min-width: 300px;
+        }
+
+        .charts-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr;
+            gap: 1.5rem;
+        }
+
+        .card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            display: flex;
+            flex-direction: column;
+            padding: 1rem;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .card-title {
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .chart-container {
+            flex: 1;
+            position: relative;
+            width: 100%;
+            height: 100%;
+            min-height: 240px; 
+        }
+
+        .custom-legend {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            flex-wrap: wrap;
+        }
+        
+        .legend-item { display: flex; align-items: center; gap: 6px; }
+        .legend-color { width: 8px; height: 8px; border-radius: 50%; }
+
+        /* --- Data Table --- */
+        .table-card { flex: 1; }
+
+        .table-header-controls {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .search-box {
+            background-color: rgba(0,0,0,0.2);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 0.4rem 1rem;
+            color: var(--text-primary);
+            outline: none;
+            font-size: 0.8rem;
+            width: 200px;
+        }
+        select.search-box option { background-color: var(--bg-card); }
+        .search-box:focus { border-color: var(--accent-teal); }
+
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+
+        th {
+            background-color: var(--bg-table-header);
+            color: var(--text-secondary);
+            font-weight: 600;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            padding: 0.75rem 1rem;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        th.sortable, th.fleet-list-sortable { cursor: pointer; user-select: none; transition: background-color 0.2s; }
+        th.sortable:hover, th.fleet-list-sortable:hover { background-color: rgba(255,255,255,0.05); color: var(--text-primary); }
+        .sort-icon { display: inline-block; margin-left: 4px; font-size: 0.7rem; color: var(--text-muted); }
+
+        td {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            white-space: nowrap;
+            vertical-align: middle;
+        }
+
+        tr:hover td { background-color: var(--bg-table-row-hover); color: var(--text-primary); }
+        .td-highlight { color: var(--text-primary); }
+
+        .custom-checkbox {
+            appearance: none; width: 14px; height: 14px; border: 1px solid var(--text-muted);
+            border-radius: 3px; background: transparent; cursor: pointer; position: relative; top: 2px;
+        }
+        .custom-checkbox:checked { background-color: var(--accent-green); border-color: var(--accent-green); }
+        .custom-checkbox:checked::after {
+            content: '✓'; position: absolute; color: #000; font-size: 10px; top: -1px; left: 2px; font-weight: bold;
+        }
+
+        .status-badge { display: inline-flex; align-items: center; gap: 8px; }
+        .status-ring { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--accent-green); display: flex; align-items: center; justify-content: center; }
+        .status-text { background-color: rgba(34, 197, 94, 0.15); color: var(--accent-green); padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 600; border: 1px solid rgba(34, 197, 94, 0.3); text-transform: uppercase; }
+
+        /* --- Side Column Widgets --- */
+        .alert-list { display: flex; flex-direction: column; gap: 1rem; overflow-y: auto; flex: 1; min-height: 250px; }
+
+        .alert-item { display: flex; align-items: flex-start; gap: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color); }
+        .alert-item.interactive { cursor: pointer; transition: background-color 0.2s; padding: 0.5rem; border-radius: 4px; }
+        .alert-item.interactive:hover { background-color: rgba(255,255,255,0.05); }
+        .alert-item:last-child { border-bottom: none; }
+
+        .alert-icon { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px; flex-shrink: 0; }
+        .alert-icon.critical { background-color: rgba(239, 68, 68, 0.2); color: var(--status-red); border: 1px solid var(--status-red); }
+        .alert-icon.warning { background-color: rgba(245, 158, 11, 0.2); color: var(--status-yellow); border: 1px solid var(--status-yellow); }
+        .alert-icon.info { background-color: rgba(6, 182, 212, 0.2); color: var(--accent-teal); border: 1px solid var(--accent-teal); }
+
+        .alert-content { display: flex; flex-direction: column; }
+        .alert-title { color: var(--text-primary); font-size: 0.8rem; margin-bottom: 2px; }
+        .alert-time { color: var(--text-muted); font-size: 0.75rem; }
+
+        /* Footer / Pagination */
+        .card-footer { display: flex; justify-content: space-between; align-items: center; padding-top: 1rem; margin-top: auto; border-top: 1px solid var(--border-color); color: var(--text-muted); font-size: 0.8rem; }
+        .pagination { display: flex; gap: 4px; }
+
+        .page-btn {
+            background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); color: var(--text-secondary); width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: 4px; cursor: pointer; user-select: none; transition: all 0.2s;
+        }
+        .page-btn:hover:not(.disabled) { background: rgba(255,255,255,0.15); color: var(--text-primary); }
+        .page-btn.active { background: var(--accent-teal); color: #000; border-color: var(--accent-teal); font-weight: bold; }
+        .page-btn.disabled { opacity: 0.3; cursor: not-allowed; }
+
+        /* --- Calendar Specific Styling --- */
+        .calendar-grid {
+            display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background-color: var(--border-color); border: 1px solid var(--border-color); flex: 1; border-radius: var(--border-radius); overflow: hidden; margin-top: 1rem;
+        }
+        .calendar-day-name { background-color: var(--bg-table-header); color: var(--text-secondary); padding: 10px; text-align: center; font-weight: 600; font-size: 0.75rem; text-transform: uppercase; }
+        .calendar-cell { background-color: var(--bg-card); min-height: 100px; padding: 8px; cursor: pointer; transition: background-color 0.2s; display: flex; flex-direction: column; gap: 4px; }
+        .calendar-cell:hover { background-color: var(--bg-table-row-hover); }
+        .calendar-cell.other-month { background-color: rgba(34, 39, 45, 0.5); color: var(--text-muted); }
+        .calendar-date { font-weight: 600; font-size: 0.85rem; margin-bottom: 4px; }
+        .calendar-cell.today .calendar-date { color: #000; background: var(--accent-green); width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 50%; }
+        .calendar-cell.selected { box-shadow: inset 0 0 0 2px var(--accent-teal); }
+        .calendar-badges { display: flex; flex-direction: column; gap: 4px; overflow-y: auto; flex: 1; }
+        .calendar-badges::-webkit-scrollbar { width: 2px; }
+        .calendar-badges::-webkit-scrollbar-track { background: transparent; }
+        .calendar-badges::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 2px; }
+        
+        .due-badge { font-size: 0.65rem; padding: 3px 6px; border-radius: 3px; background: rgba(6, 182, 212, 0.15); color: var(--accent-teal); border: 1px solid rgba(6, 182, 212, 0.3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
+        .due-badge.warning { background: rgba(245, 158, 11, 0.15); color: var(--status-yellow); border-color: rgba(245, 158, 11, 0.3); }
+        .due-badge.critical { background: rgba(239, 68, 68, 0.15); color: var(--status-red); border-color: rgba(239, 68, 68, 0.3); }
+
+        /* --- Modal Styling --- */
+        .modal { display: none; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; overflow-y: auto; background-color: rgba(0,0,0,0.8); backdrop-filter: blur(5px); }
+        .modal-content { background-color: var(--bg-card); margin: 5% auto; padding: 2rem; border: 1px solid var(--border-color); border-radius: var(--border-radius); width: 90%; max-width: 800px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); position: relative; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; margin-bottom: 1.5rem; }
+        .modal-header h2 { font-size: 1.25rem; margin: 0; }
+        .close-btn { color: var(--text-secondary); font-size: 1.5rem; cursor: pointer; transition: color 0.2s; }
+        .close-btn:hover { color: var(--status-red); }
+        .form-group { margin-bottom: 1.5rem; }
+        .form-group label { display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.85rem; text-transform: uppercase; }
+
+        .checklist-container { max-height: 50vh; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 4px; background: rgba(0,0,0,0.2); padding-bottom: 1rem; margin-bottom: 1.5rem; }
+        .checklist-header { background-color: var(--bg-table-header); padding: 0.75rem 1rem; font-weight: 600; color: var(--accent-teal); border-bottom: 1px solid var(--border-color); border-top: 1px solid var(--border-color); margin-top: 1rem; font-size: 0.85rem; text-transform: uppercase; }
+        .checklist-header:first-child { margin-top: 0; border-top: none; }
+        .checklist-header.is-nogo { color: var(--status-red); border-left: 4px solid var(--status-red); }
+        .checklist-item { display: grid; grid-template-columns: 2fr 1fr; gap: 1rem; padding: 1rem; border-bottom: 1px solid var(--border-color); align-items: start; }
+        .checklist-item:last-child { border-bottom: none; }
+        .checklist-title { color: var(--text-primary); font-size: 0.85rem; }
+        .checklist-action { font-size: 0.75rem; color: var(--status-yellow); margin-top: 4px; }
+        
+        .radio-group { display: flex; gap: 1.5rem; justify-content: flex-end; align-items: center; }
+        .radio-label { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--text-secondary); font-size: 0.85rem; }
+        .radio-label input[type="radio"] { cursor: pointer; accent-color: var(--accent-green); width: 16px; height: 16px; }
+        .radio-label input[value="FAIL"] { accent-color: var(--status-red); }
+
+        .modal-footer { display: flex; justify-content: flex-end; gap: 1rem; border-top: 1px solid var(--border-color); padding-top: 1rem; }
+        .btn-solid { background: var(--accent-green); border: 1px solid var(--accent-green); color: #000; padding: 0.5rem 1.5rem; border-radius: 4px; cursor: pointer; font-weight: 600; transition: all 0.2s; }
+        .btn-solid:hover { background: var(--accent-green-light); }
+        .btn-action { padding: 4px 10px; font-size: 0.7rem; border-color: var(--border-color); color: var(--text-secondary); display: inline-flex; align-items: center; border-radius: 4px; background: transparent; cursor: pointer; transition: all 0.2s; }
+        .btn-action:hover { border-color: var(--accent-teal); color: var(--accent-teal); background: rgba(6, 182, 212, 0.1); }
+        .actions-cell { display: flex; gap: 6px; justify-content: flex-end; }
+
+        /* --- Responsive Queries --- */
+        @media (max-width: 1400px) {
+            .charts-row { grid-template-columns: 1fr 1fr; }
+            .area-chart-card { grid-column: span 2; }
+        }
+
+        @media (max-width: 1100px) {
+            .dashboard-layout { flex-direction: column; }
+            .main-column, .side-column { width: 100%; flex: none; }
+            .header-actions { margin-left: 0; margin-top: 1rem; }
+        }
+
+        @media (max-width: 768px) {
+            .charts-row { grid-template-columns: 1fr; }
+            .area-chart-card { grid-column: span 1; }
+            .top-header { flex-direction: column; align-items: flex-start; }
+            
+            /* Enhanced mobile calendar layout */
+            .calendar-day-name { font-size: 0.6rem; padding: 5px; }
+            .calendar-cell { min-height: 60px; padding: 4px; }
+            .calendar-date { font-size: 0.75rem; margin-bottom: 2px; }
+            .due-badge { padding: 2px; font-size: 0.6rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-logo">F</div>
+        <div class="nav-item active" data-target="view-dashboard" title="Dashboard">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+        </div>
+        <div class="nav-item" data-target="view-calendar" title="Calendar">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/></svg>
+        </div>
+        <div class="nav-item" data-target="view-personnel" title="Personnel">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+        </div>
+        <div class="nav-item" data-target="view-fleet" title="Fleet Stats">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg>
+        </div>
+        <div class="nav-item" data-target="view-driver" title="Drivers">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+        </div>
+    </aside>
+
+    <!-- Main Content wrapper -->
+    <main class="main-content">
+        
+        <header class="top-header">
+            <div class="dashboard-title" id="mainHeaderTitle">FLEET COMPLIANCE DASHBOARD</div>
+            
+            <div class="header-actions">
+                <button class="btn-outline danger" id="deleteSelectedBtn" style="display: none;" onclick="deleteSelected()">
+                    <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg>
+                    Delete Selected
+                </button>
+                <button class="btn-outline" onclick="openAddVehicleModal()">
+                    <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/></svg>
+                    Add Vehicle
+                </button>
+                <input type="file" id="csvFileInput" accept=".csv" style="display: none;">
+                <button class="btn-outline" onclick="document.getElementById('csvFileInput').click()">
+                    <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/></svg>
+                    Import CSV
+                </button>
+                <button class="btn-outline" onclick="exportCSV()">
+                    <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
+                    Export CSV
+                </button>
+            </div>
+        </header>
+
+        <!-- VIEW: DASHBOARD -->
+        <div id="view-dashboard" class="view-section active">
+            <div class="dashboard-layout">
+                <div class="main-column">
+                    <div class="charts-row">
+                        <div class="card area-chart-card">
+                            <div class="card-header">
+                                <h2 class="card-title">INSPECTION TRENDS</h2>
+                                <div class="custom-legend">
+                                    <span class="legend-item"><span class="legend-color" style="background:var(--accent-green)"></span> Passed</span>
+                                    <span class="legend-item"><span class="legend-color" style="background:var(--status-red)"></span> Failed</span>
+                                    <span class="legend-item"><span class="legend-color" style="background:var(--status-yellow)"></span> Overdue</span>
+                                </div>
+                            </div>
+                            <div class="chart-container"><canvas id="areaChart"></canvas></div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-header">
+                                <h2 class="card-title">FLEET STATUS BY BRAND</h2>
+                            </div>
+                            <div class="custom-legend" style="justify-content: flex-end; margin-bottom: 10px;">
+                                <span class="legend-item"><span class="legend-color" style="background:var(--accent-green)"></span> Passed</span>
+                                <span class="legend-item"><span class="legend-color" style="background:var(--status-red)"></span> Issues</span>
+                            </div>
+                            <div class="chart-container"><canvas id="barChart"></canvas></div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-header"><h2 class="card-title">OVERALL COMPLIANCE</h2></div>
+                            <div class="chart-container"><canvas id="donutChart"></canvas></div>
+                            <div id="donutLegend" style="display: flex; flex-direction: column; gap: 8px; font-size: 0.8rem; color: var(--text-secondary); margin-top: 15px;"></div>
+                        </div>
+                    </div>
+
+                    <div class="card table-card">
+                        <div class="card-header">
+                            <h2 class="card-title">FLEET COMPLIANCE LOG</h2>
+                            <div class="table-header-controls">
+                                <select id="statusFilter" class="search-box" style="width: auto;">
+                                    <option value="ALL">All Statuses</option>
+                                    <option value="PASSED">Passed</option>
+                                    <option value="FAILED">Failed</option>
+                                    <option value="OVERDUE">Overdue</option>
+                                </select>
+                                <input type="text" id="searchInput" class="search-box" placeholder="Search Data...">
+                            </div>
+                        </div>
+                        <div style="overflow-x: auto;">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th style="width: 40px;"><input type="checkbox" id="selectAllCheckbox" class="custom-checkbox" title="Select all on page"></th>
+                                        <th class="sortable" data-sort="Brand">BRAND & MODEL <span class="sort-icon">↕</span></th>
+                                        <th class="sortable" data-sort="Year">YEAR <span class="sort-icon">↕</span></th>
+                                        <th class="sortable" data-sort="Plate">PLATE <span class="sort-icon">↕</span></th>
+                                        <th class="sortable" data-sort="Driver">DRIVER <span class="sort-icon">↕</span></th>
+                                        <th class="sortable" data-sort="LastInspected">LAST INSPECTED <span class="sort-icon">↕</span></th>
+                                        <th class="sortable" data-sort="NextDue">NEXT DUE <span class="sort-icon">↕</span></th>
+                                        <th class="sortable" data-sort="Status">STATUS <span class="sort-icon">↕</span></th>
+                                        <th style="text-align: right;">ACTIONS</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tableBody"></tbody>
+                            </table>
+                        </div>
+                        <div class="card-footer">
+                            <span id="tableInfo">Showing 0 to 0 of 0 entries</span>
+                            <div class="pagination" id="paginationControls"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="side-column">
+                    <div class="card" style="flex: 1;">
+                        <div class="card-header"><h2 class="card-title">RECENT ALERTS</h2></div>
+                        <div class="alert-list" id="recentAlertsList"></div>
+                        <div class="card-footer" style="padding-top: 15px;">
+                            <span id="alertsInfo" style="font-size: 0.75rem;"></span>
+                            <div class="pagination" id="alertsPaginationControls"></div>
+                        </div>
+                    </div>
+
+                    <div class="card" style="min-height: 300px;">
+                        <div class="card-header"><h2 class="card-title">UPCOMING INSPECTIONS</h2></div>
+                        <div class="alert-list" id="upcomingInspectionsList"></div>
+                        <div class="card-footer" style="padding-top: 15px;">
+                            <span id="upcomingInfo" style="font-size: 0.75rem;"></span>
+                            <div class="pagination" id="upcomingPaginationControls"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW: CALENDAR -->
+        <div id="view-calendar" class="view-section">
+            <div class="dashboard-layout">
+                <div class="main-column" style="flex: 3;">
+                    <div class="card" style="flex: 1; display: flex; flex-direction: column;">
+                        <div class="card-header" style="justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 1.5rem; margin-bottom: 0;">
+                            <button class="btn-outline" id="prevMonthBtn" style="padding: 0.5rem 1rem;">&lt; Previous</button>
+                            <h2 class="card-title" id="calendarMonthYear" style="font-size: 1.25rem; color: var(--accent-green); margin: 0;">Month Year</h2>
+                            <button class="btn-outline" id="nextMonthBtn" style="padding: 0.5rem 1rem;">Next &gt;</button>
+                        </div>
+                        <div class="calendar-grid" id="calendarGrid"></div>
+                    </div>
+                </div>
+                <div class="side-column" style="flex: 1;">
+                    <div class="card" style="flex: 1;">
+                        <div class="card-header"><h2 class="card-title">SCHEDULE FOR <br><span id="selectedDateDisplay" style="color: var(--accent-teal); display: inline-block; margin-top: 6px;">Select a date</span></h2></div>
+                        <div class="alert-list" id="calendarDayDetails" style="min-height: 400px; padding-right: 5px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW: PERSONNEL -->
+        <div id="view-personnel" class="view-section">
+            <div class="dashboard-layout">
+                <div class="main-column" style="flex: 3;">
+                    <div class="card table-card">
+                        <div class="card-header"><h2 class="card-title">INSPECTOR STATISTICS</h2></div>
+                        <div style="overflow-x: auto;">
+                            <table>
+                                <thead><tr><th>INSPECTOR NAME</th><th>TOTAL SCANS</th><th>PASSED</th><th>FAILED</th><th>PASS RATE</th><th>LAST ACTIVE</th></tr></thead>
+                                <tbody id="inspectorTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="card" style="margin-top: 1.5rem;">
+                        <div class="card-header"><h2 class="card-title">INSPECTIONS BY PERSONNEL</h2></div>
+                        <div class="chart-container"><canvas id="personnelChart"></canvas></div>
+                    </div>
+                </div>
+                <div class="side-column" style="flex: 1;">
+                    <div class="card" style="flex: 1;">
+                        <div class="card-header">
+                            <h2 class="card-title">RECENT ACTIVITIES</h2>
+                            <div class="table-header-controls">
+                                <input type="text" id="inspectorSearchInput" class="search-box" placeholder="Filter Inspector..." style="width: 150px; font-size: 0.75rem; padding: 0.3rem 0.8rem;">
+                            </div>
+                        </div>
+                        <div class="alert-list" id="personnelActivitiesList" style="min-height: 400px; padding-right: 5px;"></div>
+                        <div class="card-footer" style="padding-top: 15px;">
+                            <span id="personnelActivitiesInfo" style="font-size: 0.75rem;"></span>
+                            <div class="pagination" id="personnelActivitiesPaginationControls"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW: DRIVER -->
+        <div id="view-driver" class="view-section">
+            <div class="dashboard-layout">
+                <div class="main-column" style="flex: 3;">
+                    <div class="card table-card">
+                        <div class="card-header"><h2 class="card-title">DRIVER STATISTICS</h2></div>
+                        <div style="overflow-x: auto;">
+                            <table>
+                                <thead><tr><th>DRIVER NAME</th><th>TOTAL INSPECTIONS</th><th>PASSED</th><th>FAILED</th><th>PASS RATE</th><th>LAST ACTIVE</th></tr></thead>
+                                <tbody id="driverTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="card" style="margin-top: 1.5rem;">
+                        <div class="card-header"><h2 class="card-title">INSPECTIONS BY DRIVER</h2></div>
+                        <div class="chart-container"><canvas id="driverChart"></canvas></div>
+                    </div>
+                </div>
+                <div class="side-column" style="flex: 1;">
+                    <div class="card" style="flex: 1; min-height: 250px;">
+                        <div class="card-header">
+                            <h2 class="card-title">RECENT ACTIVITIES</h2>
+                            <div class="table-header-controls">
+                                <input type="text" id="driverSearchInput" class="search-box" placeholder="Filter Driver..." style="width: 150px; font-size: 0.75rem; padding: 0.3rem 0.8rem;">
+                            </div>
+                        </div>
+                        <div class="alert-list" id="driverActivitiesList" style="flex: 1; padding-right: 5px;"></div>
+                        <div class="card-footer" style="padding-top: 15px;">
+                            <span id="driverActivitiesInfo" style="font-size: 0.75rem;"></span>
+                            <div class="pagination" id="driverActivitiesPaginationControls"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="card" style="min-height: 250px;">
+                        <div class="card-header">
+                            <h2 class="card-title" style="color: var(--status-red);">TOP 5 FAILED DRIVERS</h2>
+                        </div>
+                        <div class="alert-list" id="topFailedDriversList" style="flex: 1; padding-right: 5px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW: FLEET -->
+        <div id="view-fleet" class="view-section">
+            <div class="dashboard-layout">
+                <div class="main-column" style="flex: 1; max-width: 100%;">
+                    <div class="card table-card">
+                        <div class="card-header">
+                            <h2 class="card-title">FLEET COMPOSITION & STATUS</h2>
+                            <div class="table-header-controls">
+                                <input type="text" id="fleetSearchInput" class="search-box" placeholder="Search Brand or Model...">
+                            </div>
+                        </div>
+                        <div style="overflow-x: auto;">
+                            <table>
+                                <thead><tr><th>BRAND</th><th>MODEL</th><th>TOTAL VEHICLES</th><th>PASSED</th><th>FAILED</th><th>OVERDUE</th><th>PASS RATE</th></tr></thead>
+                                <tbody id="fleetTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- NEW: VEHICLE DIRECTORY LIST -->
+                    <div class="card table-card" style="margin-top: 1.5rem;">
+                        <div class="card-header">
+                            <h2 class="card-title">VEHICLE DIRECTORY</h2>
+                            <div class="table-header-controls">
+                                <select id="fleetListStatusFilter" class="search-box" style="width: auto;">
+                                    <option value="ALL">All Statuses</option>
+                                    <option value="PASSED">Passed</option>
+                                    <option value="FAILED">Failed</option>
+                                    <option value="OVERDUE">Overdue</option>
+                                </select>
+                                <input type="text" id="fleetListSearchInput" class="search-box" placeholder="Search Vehicles...">
+                            </div>
+                        </div>
+                        <div style="overflow-x: auto;">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th class="fleet-list-sortable" data-sort="Brand">BRAND & MODEL <span class="sort-icon">↕</span></th>
+                                        <th class="fleet-list-sortable" data-sort="Year">YEAR <span class="sort-icon">↕</span></th>
+                                        <th class="fleet-list-sortable" data-sort="Plate">PLATE <span class="sort-icon">↕</span></th>
+                                        <th class="fleet-list-sortable" data-sort="Driver">DRIVER <span class="sort-icon">↕</span></th>
+                                        <th class="fleet-list-sortable" data-sort="Status">STATUS <span class="sort-icon">↕</span></th>
+                                        <th style="text-align: right;">ACTIONS</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="fleetListTableBody"></tbody>
+                            </table>
+                        </div>
+                        <div class="card-footer">
+                            <span id="fleetListInfo">Showing 0 to 0 of 0 entries</span>
+                            <div class="pagination" id="fleetListPaginationControls"></div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Custom Message Modal -->
+    <div id="messageBoxModal" class="modal">
+        <div class="modal-content" style="max-width: 400px; text-align: center;">
+            <div class="modal-header" style="justify-content: center; border-bottom: none; margin-bottom: 0.5rem;">
+                <h2 id="messageBoxTitle">Notice</h2>
+            </div>
+            <div style="margin-bottom: 2rem; color: var(--text-secondary); line-height: 1.5;" id="messageBoxText"></div>
+            <div class="modal-footer" style="justify-content: center; border-top: none;">
+                <button type="button" class="btn-outline" id="messageBoxCancel" style="display: none;" onclick="closeModal('messageBoxModal')">Cancel</button>
+                <button type="button" class="btn-solid" id="messageBoxOk" onclick="closeModal('messageBoxModal')">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Inspection Modal -->
+    <div id="inspectionModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>LOG INSPECTION: <span id="inspectVehicleName" style="color: var(--accent-teal);"></span></h2>
+                <span class="close-btn" onclick="closeModal('inspectionModal')">&times;</span>
+            </div>
+            <form id="inspectionForm">
+                <input type="hidden" id="inspectPlate">
+                <div class="form-group">
+                    <label for="inspectorName">Authorized Inspector Name / ID</label>
+                    <input type="text" id="inspectorName" class="search-box" style="width: 100%; border-radius: 4px;" required placeholder="e.g. John Doe / OPR-09">
+                </div>
+                <div class="form-group">
+                    <label for="driverName">Driver Name</label>
+                    <input type="text" id="driverName" class="search-box" style="width: 100%; border-radius: 4px;" required placeholder="e.g. Mike Wheeler">
+                </div>
+                <div id="checklistContainer" class="checklist-container"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-outline" onclick="closeModal('inspectionModal')">Cancel</button>
+                    <button type="submit" class="btn-solid">Submit Inspection Log</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Vehicle Modal -->
+    <div id="addVehicleModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>ADD NEW VEHICLE</h2>
+                <span class="close-btn" onclick="closeModal('addVehicleModal')">&times;</span>
+            </div>
+            <form id="addVehicleForm">
+                <div class="form-group">
+                    <label for="newBrand">Brand</label>
+                    <input type="text" id="newBrand" class="search-box" style="width: 100%; border-radius: 4px;" required placeholder="e.g. Ford">
+                </div>
+                <div class="form-group">
+                    <label for="newModel">Model</label>
+                    <input type="text" id="newModel" class="search-box" style="width: 100%; border-radius: 4px;" required placeholder="e.g. Transit Custom">
+                </div>
+                <div class="form-group">
+                    <label for="newYear">Year</label>
+                    <input type="number" id="newYear" class="search-box" style="width: 100%; border-radius: 4px;" required placeholder="e.g. 2024" min="1900" max="2100">
+                </div>
+                <div class="form-group">
+                    <label for="newPlate">License Plate</label>
+                    <input type="text" id="newPlate" class="search-box" style="width: 100%; border-radius: 4px;" required placeholder="e.g. XW-294-Q">
+                </div>
+                <div class="form-group">
+                    <label for="newDriver">Primary Driver (Optional)</label>
+                    <input type="text" id="newDriver" class="search-box" style="width: 100%; border-radius: 4px;" placeholder="e.g. Jane Doe">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-outline" onclick="closeModal('addVehicleModal')">Cancel</button>
+                    <button type="submit" class="btn-solid">Save Vehicle</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Manual Next Due Modal -->
+    <div id="manualNextDueModal" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h2>SET NEXT DUE DATE</h2>
+                <span class="close-btn" onclick="closeModal('manualNextDueModal')">&times;</span>
+            </div>
+            <form id="manualNextDueForm">
+                <div class="form-group">
+                    <label for="manualDateInput" style="color: var(--status-red);">Inspection Failed. Set follow-up date:</label>
+                    <input type="date" id="manualDateInput" class="search-box" style="width: 100%; border-radius: 4px;" required>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-outline" onclick="closeModal('manualNextDueModal')">Cancel</button>
+                    <button type="submit" class="btn-solid">Save Date</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- History Modal -->
+    <div id="historyModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>INSPECTION HISTORY: <span id="historyVehicleName" style="color: var(--accent-teal);"></span></h2>
+                <span class="close-btn" onclick="closeModal('historyModal')">&times;</span>
+            </div>
+            <div id="inspectionHistoryList" style="max-height: 60vh; overflow-y: auto;"></div>
+        </div>
+    </div>
+
+    <script>
+        // ----------------------------------------------------
+        // Helpers & Security
+        // ----------------------------------------------------
+
+        // XSS Prevention Utility
+        function escapeHTML(str) {
+            if (str === null || str === undefined) return '';
+            return String(str).replace(/[&<>'"]/g, tag => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+            }[tag]));
+        }
+
+        // Pagination Generators (DRY Optimization)
+        function buildPaginationHTML(curPage, totPages, funcName) {
+            if (totPages < 1) totPages = 1;
+            let html = '';
+            html += `<div class="page-btn ${curPage === 1 ? 'disabled' : ''}" onclick="if(${curPage} > 1) ${funcName}(1)">|&lt;</div>`;
+            html += `<div class="page-btn ${curPage === 1 ? 'disabled' : ''}" onclick="if(${curPage} > 1) ${funcName}(${curPage - 1})">&lt;</div>`;
+            let pStart = Math.max(1, curPage - 1), pEnd = Math.min(totPages, pStart + 2);
+            if (pEnd - pStart < 2) pStart = Math.max(1, pEnd - 2);
+            for (let i = pStart; i <= pEnd; i++) html += `<div class="page-btn ${i === curPage ? 'active' : ''}" onclick="${funcName}(${i})">${i}</div>`;
+            html += `<div class="page-btn ${curPage === totPages ? 'disabled' : ''}" onclick="if(${curPage} < ${totPages}) ${funcName}(${curPage + 1})">&gt;</div>`;
+            html += `<div class="page-btn ${curPage === totPages ? 'disabled' : ''}" onclick="if(${curPage} < ${totPages}) ${funcName}(${totPages})">&gt;|</div>`;
+            return html;
+        }
+
+        function buildSimplePaginationHTML(curPage, totPages, funcName) {
+            if (totPages < 1) totPages = 1;
+            let html = '';
+            html += `<div class="page-btn ${curPage === 1 ? 'disabled' : ''}" onclick="if(${curPage} > 1) ${funcName}(${curPage - 1})">&lt;</div>`;
+            if (totPages > 0) html += `<div class="page-btn active">${curPage}</div>`;
+            html += `<div class="page-btn ${curPage === totPages ? 'disabled' : ''}" onclick="if(${curPage} < ${totPages}) ${funcName}(${curPage + 1})">&gt;</div>`;
+            return html;
+        }
+
+        // Custom UI Modal MessageBox
+        function showMessage(title, text, isConfirm = false, onConfirm = null) {
+            document.getElementById('messageBoxTitle').innerText = title;
+            document.getElementById('messageBoxText').innerText = text;
+            const cancelBtn = document.getElementById('messageBoxCancel');
+            const okBtn = document.getElementById('messageBoxOk');
+            
+            if (isConfirm) {
+                cancelBtn.style.display = 'inline-block';
+                okBtn.onclick = () => { closeModal('messageBoxModal'); if (onConfirm) onConfirm(); };
+            } else {
+                cancelBtn.style.display = 'none';
+                okBtn.onclick = () => closeModal('messageBoxModal');
+            }
+            openModal('messageBoxModal');
+        }
+
+        function parseDate(dateStr) {
+            if (!dateStr) return new Date(NaN);
+            let parts = dateStr.split('-');
+            if (parts.length === 3 && parts[2].length === 2) {
+                parts[2] = '20' + parts[2];
+                return new Date(parts.join(' ')); 
+            }
+            return new Date(dateStr.replace(/-/g, ' '));
+        }
+
+        function formatDateSafe(dateObj) {
+            const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+            const dd = String(dateObj.getDate()).padStart(2, '0');
+            const mmm = months[dateObj.getMonth()];
+            const yy = String(dateObj.getFullYear()).slice(-2);
+            return `${dd}-${mmm}-${yy}`;
+        }
+
+        function getMapKey(d) {
+            if(isNaN(d)) return null;
+            return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        }
+
+        // ----------------------------------------------------
+        // Global State & Definitions
+        // ----------------------------------------------------
+        const checklistDefinition = [
+            { id: 'I', title: 'TIRES & SPARES', isHeader: true, isNoGo: true, note: 'NO-GO ITEM (ENTRY DENIED)' },
+            { id: '1.1', title: 'Spare tire: Available, correct size, not flat/torn.', action: 'Deny Entry.' },
+            { id: '1.2', title: 'Tire direction: Installed correctly (Outside/Inside).', action: 'Deny Entry.' },
+            { id: '1.3', title: 'Synchronization: 4 main tires of same type.', action: 'Deny Entry.' },
+            { id: '1.4', title: 'Wear & Pressure: Not overly worn, evenly inflated.', action: '' },
+            { id: 'II', title: 'BODYWORK & LEAKS', isHeader: true },
+            { id: '2.1', title: 'Bodywork: No temporary patches, doors/hood close tightly.', action: 'Issue Warning.' },
+            { id: '2.2', title: 'Fluid leaks: No engine oil or coolant dripping.', action: 'Deny Entry (LOPC/Fire Risk).' },
+            { id: '2.3', title: 'Lights & Glass: Windshield intact. Headlights, signals work.', action: 'Test lights.' },
+            { id: 'III', title: 'DRIVER & INFORMATION', isHeader: true },
+            { id: '3.1', title: 'Safety shoes: Driver wears safety shoes. NO flip-flops.', action: 'Require change to enter.' },
+            { id: '3.2', title: 'Maintenance log: Logbook/history available in vehicle.', action: 'Report to FMD.' },
+            { id: '3.3', title: 'Emergency Info: 24/7 emergency & insurance hotlines displayed.', action: 'Require immediate sticker.' },
+            { id: 'IV', title: 'CABIN SAFETY & MONITORING', isHeader: true },
+            { id: '4.1', title: 'Seatbelt: Fully functional, driver wearing it.', action: 'Suspend, issue LSR violation.' },
+            { id: '4.2', title: 'Dashcam: Dual dashcam (front/cabin) operating.', action: '' },
+            { id: '4.3', title: 'GPS System: Tracking operational for speed monitoring.', action: '' }
+        ];
+
+        let tableData = [];
+        let areaChart, barChart, donutChart, personnelChart, driverChart;
+        
+        let currentPage = 1, sortCol = '', sortAsc = true, searchTerm = '', statusFilter = 'ALL';
+        const itemsPerPage = 10;
+
+        let fleetListPage = 1, fleetListSortCol = '', fleetListSortAsc = true, fleetListSearchTerm = '', fleetListStatusFilter = 'ALL';
+        const fleetListItemsPerPage = 10;
+        
+        let inspectorSearchTerm = '', currentPersonnelPage = 1;
+        let driverSearchTerm = '', currentDriverPage = 1;
+        const personnelActivitiesPerPage = 6;
+        const driverActivitiesPerPage = 5;
+
+        let filteredAlerts = [], filteredUpcoming = [];
+        let currentAlertsPage = 1, currentUpcomingPage = 1;
+        const sideItemsPerPage = 5;
+
+        let currentCalMonth = new Date().getMonth();
+        let currentCalYear = new Date().getFullYear();
+        let selectedDateStr = null;
+        let globalDueMap = {};
+
+        // Helper to extract flattened inspections across all vehicles
+        function extractAllInspections() {
+            let all = [];
+            tableData.forEach(vehicle => {
+                if(vehicle.inspections && vehicle.inspections.length > 0) {
+                    vehicle.inspections.forEach(insp => all.push({ 
+                        ...insp, 
+                        vehiclePlate: vehicle.Plate, 
+                        vehicleMakeModel: `${vehicle.Brand} ${vehicle.Model}` 
+                    }));
+                }
+            });
+            all.sort((a,b) => new Date(b.date) - new Date(a.date));
+            return all;
+        }
+
+        // ----------------------------------------------------
+        // Chart JS Configuration
+        // ----------------------------------------------------
+        Chart.defaults.color = '#94a0b0';
+        Chart.defaults.font.family = "'Inter', sans-serif";
+        Chart.defaults.scale.grid.color = '#30363d';
+        Chart.defaults.scale.grid.borderColor = 'transparent';
+
+        function createGradient(ctx, colorStart, colorEnd) {
+            const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+            gradient.addColorStop(0, colorStart); gradient.addColorStop(1, colorEnd); return gradient;
+        }
+
+        Chart.register({
+            id: 'doughnutLabels',
+            afterDraw: (chart) => {
+                if (chart.config.type !== 'doughnut') return;
+                const ctx = chart.ctx; const dataset = chart.data.datasets[0];
+                if (!dataset || !dataset.data) return;
+                const total = dataset.data.reduce((acc, val) => acc + val, 0);
+                if (total === 0) return;
+
+                chart.getDatasetMeta(0).data.forEach((datapoint, index) => {
+                    const value = dataset.data[index];
+                    if (value === 0) return;
+                    if ((value / total) > 0.05) {
+                        const percentage = ((value / total) * 100).toFixed(0) + '%';
+                        const { x, y } = datapoint.tooltipPosition();
+                        ctx.save(); ctx.fillStyle = '#ffffff'; ctx.font = 'bold 12px Inter';
+                        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                        ctx.shadowColor = 'rgba(0,0,0,0.8)'; ctx.shadowBlur = 4;
+                        ctx.fillText(`${value} (${percentage})`, x, y);
+                        ctx.restore();
+                    }
+                });
+            }
+        });
+
+        // ----------------------------------------------------
+        // View Routing & Delegation
+        // ----------------------------------------------------
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                const targetId = e.currentTarget.getAttribute('data-target');
+                if(!targetId) return;
+                
+                document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+                e.currentTarget.classList.add('active');
+                
+                document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active'));
+                const targetView = document.getElementById(targetId);
+                if(targetView) targetView.classList.add('active');
+                
+                if(targetId === 'view-dashboard') document.getElementById('mainHeaderTitle').innerText = 'FLEET COMPLIANCE DASHBOARD';
+                else if(targetId === 'view-calendar') { document.getElementById('mainHeaderTitle').innerText = 'INSPECTION CALENDAR'; renderCalendar(); }
+                else if (targetId === 'view-personnel') { document.getElementById('mainHeaderTitle').innerText = 'PERSONNEL & INSPECTORS'; renderPersonnel(); }
+                else if (targetId === 'view-driver') { document.getElementById('mainHeaderTitle').innerText = 'DRIVER STATISTICS'; renderDriver(); }
+                else if (targetId === 'view-fleet') { document.getElementById('mainHeaderTitle').innerText = 'FLEET STATISTICS'; renderFleet(); renderFleetList(); }
+            });
+        });
+
+        // Global Event Delegation for Dynamic Elements
+        document.addEventListener('click', function(e) {
+            const btnHistory = e.target.closest('.action-history');
+            const btnInspect = e.target.closest('.action-inspect');
+            const btnRemove = e.target.closest('.action-remove-vehicle');
+            const btnFilterDriver = e.target.closest('.action-filter-driver');
+            
+            if (btnHistory) viewHistory(btnHistory.getAttribute('data-plate'));
+            if (btnInspect) startInspection(btnInspect.getAttribute('data-plate'));
+            if (btnRemove) removeVehicle(btnRemove.getAttribute('data-plate'));
+            
+            // Filters driver search input securely
+            if (btnFilterDriver) {
+                const driverName = btnFilterDriver.getAttribute('data-driver');
+                const searchInput = document.getElementById('driverSearchInput');
+                if (searchInput) {
+                    searchInput.value = driverName;
+                    searchInput.dispatchEvent(new Event('input'));
+                }
+            }
+        });
+
+        // ----------------------------------------------------
+        // Modals & UI Controls
+        // ----------------------------------------------------
+        function openModal(modalId) { document.getElementById(modalId).style.display = 'block'; }
+        function closeModal(modalId) { document.getElementById(modalId).style.display = 'none'; }
+        
+        window.addEventListener('click', function(event) { 
+            if (event.target.classList.contains('modal')) event.target.style.display = 'none'; 
+        });
+
+        function updateDeleteBtnVisibility() {
+            const anyChecked = document.querySelectorAll('.row-checkbox:checked').length > 0;
+            document.getElementById('deleteSelectedBtn').style.display = anyChecked ? 'flex' : 'none';
+        }
+
+        document.getElementById('selectAllCheckbox').addEventListener('change', function(e) {
+            const isChecked = e.target.checked;
+            document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = isChecked);
+            updateDeleteBtnVisibility();
+        });
+
+        window.deleteSelected = function() {
+            showMessage('Confirm Deletion', 'Are you sure you want to delete the selected vehicles?', true, () => {
+                const checkedBoxes = document.querySelectorAll('.row-checkbox:checked');
+                const platesToDelete = Array.from(checkedBoxes).map(cb => cb.value);
+                tableData = tableData.filter(row => !platesToDelete.includes(row.Plate));
+                document.getElementById('selectAllCheckbox').checked = false;
+                updateDeleteBtnVisibility();
+                updateDashboard();
+            });
+        };
+
+        window.removeVehicle = function(plate) {
+            showMessage('Confirm Removal', `Are you sure you want to permanently remove vehicle with plate ${plate}?`, true, () => {
+                tableData = tableData.filter(v => v.Plate.toUpperCase() !== plate.toUpperCase());
+                updateDashboard(); 
+            });
+        };
+
+        function buildChecklist() {
+            const container = document.getElementById('checklistContainer');
+            let html = '';
+            checklistDefinition.forEach(item => {
+                if (item.isHeader) {
+                    html += `<div class="checklist-header ${item.isNoGo ? 'is-nogo' : ''}">${escapeHTML(item.id)}. ${escapeHTML(item.title)}${item.note ? `<span style="display:block; font-size: 0.75rem; font-weight: normal; margin-top: 4px; color: var(--status-red);">[!] ${escapeHTML(item.note)}</span>` : ''}</div>`;
+                } else {
+                    html += `<div class="checklist-item"><div><div class="checklist-title">${escapeHTML(item.id)} - ${escapeHTML(item.title)}</div>${item.action ? `<div class="checklist-action">Action required if Fail: ${escapeHTML(item.action)}</div>` : ''}</div><div class="radio-group"><label class="radio-label"><input type="radio" name="status-${item.id}" value="PASS" checked required>PASS</label><label class="radio-label"><input type="radio" name="status-${item.id}" value="FAIL" required>FAIL</label></div></div>`;
+                }
+            });
+            container.innerHTML = html;
+        }
+
+        window.startInspection = function(plate) {
+            if (!plate) return;
+            const vehicle = tableData.find(v => v.Plate.toUpperCase() === plate.toUpperCase());
+            if (!vehicle) return;
+            document.getElementById('inspectPlate').value = vehicle.Plate;
+            document.getElementById('inspectVehicleName').innerText = `${escapeHTML(vehicle.Brand)} ${escapeHTML(vehicle.Model)} (${escapeHTML(vehicle.Plate)})`;
+            document.getElementById('inspectionForm').reset();
+            
+            // Pre-fill the driver name if the vehicle has a primary driver assigned
+            document.getElementById('driverName').value = vehicle.Driver || '';
+            
+            openModal('inspectionModal');
+        };
+
+        window.viewHistory = function(plate) {
+            if (!plate) return;
+            const vehicle = tableData.find(v => v.Plate.toUpperCase() === plate.toUpperCase());
+            if (!vehicle) return;
+            document.getElementById('historyVehicleName').innerText = `${escapeHTML(vehicle.Brand)} ${escapeHTML(vehicle.Model)} (${escapeHTML(vehicle.Plate)})`;
+            const list = document.getElementById('inspectionHistoryList');
+            
+            if (!vehicle.inspections || vehicle.inspections.length === 0) {
+                list.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 2rem;">No historical inspection logs found for this vehicle.</p>';
+            } else {
+                list.innerHTML = [...vehicle.inspections].reverse().map(insp => {
+                    const itemsHtml = insp.details.map(res => {
+                        const def = checklistDefinition.find(i => i.id === res.id) || {};
+                        const isFail = res.status === 'FAIL';
+                        return `<div style="display: flex; justify-content: space-between; padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-color); ${isFail ? 'background: rgba(239, 68, 68, 0.1);' : ''}"><span style="color: var(--text-secondary); font-size: 0.85rem;">${escapeHTML(res.id)} - ${escapeHTML(def.title) || 'Unknown'}</span><span style="color: ${isFail ? 'var(--status-red)' : 'var(--accent-green)'}; font-weight: bold; font-size: 0.85rem;">${escapeHTML(res.status)}</span></div>`;
+                    }).join('');
+                    
+                    return `<div style="border: 1px solid var(--border-color); border-radius: 4px; margin-bottom: 1.5rem; background: var(--bg-card);"><div style="padding: 1rem; border-bottom: 1px solid var(--border-color); background: var(--bg-table-header); display: flex; justify-content: space-between; align-items: center; border-radius: 4px 4px 0 0;"><div><span style="color: var(--text-muted); font-size: 0.8rem;">Date:</span> <strong style="color: var(--text-primary); margin-right: 15px;">${escapeHTML(new Date(insp.date).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }))}</strong><span style="color: var(--text-muted); font-size: 0.8rem;">Inspector:</span> <strong style="color: var(--text-primary); margin-right: 15px;">${escapeHTML(insp.inspector)}</strong><span style="color: var(--text-muted); font-size: 0.8rem;">Driver:</span> <strong style="color: var(--text-primary);">${escapeHTML(insp.driver) || 'N/A'}</strong></div><span style="color: ${insp.status === 'Failed' ? 'var(--status-red)' : 'var(--accent-green)'}; font-weight: 700; font-size: 0.9rem; letter-spacing: 0.5px;">STATUS: ${escapeHTML(insp.status).toUpperCase()}</span></div><div>${itemsHtml}</div></div>`;
+                }).join('');
+            }
+            openModal('historyModal');
+        };
+
+        window.openAddVehicleModal = function() {
+            document.getElementById('addVehicleForm').reset();
+            openModal('addVehicleModal');
+        };
+
+        document.getElementById('addVehicleForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const brand = document.getElementById('newBrand').value.trim();
+            const model = document.getElementById('newModel').value.trim();
+            const year = document.getElementById('newYear').value.trim();
+            const plate = document.getElementById('newPlate').value.trim().toUpperCase();
+            const driver = document.getElementById('newDriver').value.trim();
+
+            if (tableData.some(v => v.Plate.toUpperCase() === plate)) {
+                showMessage('Error', 'A vehicle with this License Plate already exists.');
+                return;
+            }
+
+            const newVehicle = {
+                Brand: brand,
+                Model: model,
+                Year: year,
+                Plate: plate,
+                Driver: driver,
+                LastInspected: '',
+                NextDue: formatDateSafe(new Date()), // Force NextDue to today so it flags immediately
+                Status: 'OVERDUE', 
+                inspections: []
+            };
+
+            tableData.push(newVehicle);
+            closeModal('addVehicleModal');
+            updateDashboard();
+        });
+
+        let pendingInspection = null;
+        document.getElementById('inspectionForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const plate = document.getElementById('inspectPlate').value;
+            const inspector = document.getElementById('inspectorName').value;
+            const driver = document.getElementById('driverName').value;
+            const vehicleIndex = tableData.findIndex(v => v.Plate.toUpperCase() === plate.toUpperCase());
+            if (vehicleIndex === -1) return;
+
+            let isFailed = false;
+            const results = [];
+            checklistDefinition.filter(item => !item.isHeader).forEach(item => {
+                const radios = document.getElementsByName(`status-${item.id}`);
+                let val = 'PASS';
+                for(let r of radios) { if(r.checked) val = r.value; }
+                if(val === 'FAIL') isFailed = true;
+                results.push({ id: item.id, status: val });
+            });
+
+            const today = new Date();
+            if (isFailed) {
+                pendingInspection = { vehicleIndex, inspector, driver, results, today };
+                closeModal('inspectionModal');
+                document.getElementById('manualDateInput').value = '';
+                openModal('manualNextDueModal');
+            } else {
+                tableData[vehicleIndex].Status = 'Passed';
+                tableData[vehicleIndex].Driver = driver; // Update Driver based on the logged inspection
+                tableData[vehicleIndex].LastInspected = formatDateSafe(today);
+                const nextDue = new Date(today);
+                nextDue.setMonth(today.getMonth() + 6);
+                tableData[vehicleIndex].NextDue = formatDateSafe(nextDue);
+                if (!tableData[vehicleIndex].inspections) tableData[vehicleIndex].inspections = [];
+                tableData[vehicleIndex].inspections.push({
+                    date: today.toISOString(), inspector, driver, status: 'Passed', details: results
+                });
+                closeModal('inspectionModal');
+                updateDashboard();
+            }
+        });
+
+        document.getElementById('manualNextDueForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            if (!pendingInspection) return;
+            const manualDateVal = document.getElementById('manualDateInput').value;
+            if (!manualDateVal) return;
+
+            const manualDateParts = manualDateVal.split('-');
+            const nextDue = new Date(manualDateParts[0], manualDateParts[1] - 1, manualDateParts[2]);
+            const { vehicleIndex, inspector, driver, results, today } = pendingInspection;
+
+            tableData[vehicleIndex].Status = 'Failed';
+            tableData[vehicleIndex].Driver = driver; // Update Driver based on the logged inspection
+            tableData[vehicleIndex].LastInspected = formatDateSafe(today);
+            tableData[vehicleIndex].NextDue = formatDateSafe(nextDue);
+            if (!tableData[vehicleIndex].inspections) tableData[vehicleIndex].inspections = [];
+            tableData[vehicleIndex].inspections.push({
+                date: today.toISOString(), inspector, driver, status: 'Failed', details: results
+            });
+
+            closeModal('manualNextDueModal');
+            updateDashboard();
+            pendingInspection = null;
+        });
+
+        window.exportCSV = function() {
+            if(!tableData.length) return showMessage('Export Error', 'No data to export.');
+            const exportKeys = ['Brand', 'Model', 'Year', 'Plate', 'Driver', 'LastInspected', 'NextDue', 'Status', 'InspectionsData'];
+            const headers = exportKeys.join(',');
+            const rows = tableData.map(row => {
+                const encodedLogs = btoa(encodeURIComponent(JSON.stringify(row.inspections || [])));
+                return exportKeys.map(key => {
+                    if (key === 'InspectionsData') return `"${encodedLogs}"`;
+                    let val = String(row[key] || '').replace(/"/g, '""'); // Proper Escaping
+                    return `"${val}"`;
+                }).join(',');
+            }).join('\n');
+            const blob = new Blob([headers + '\n' + rows], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            link.setAttribute("href", window.URL.createObjectURL(blob));
+            link.setAttribute("download", "fleet_database_export.csv");
+            document.body.appendChild(link); link.click(); document.body.removeChild(link);
+        };
+
+        document.getElementById('csvFileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const lines = event.target.result.split('\n').filter(line => line.trim() !== '');
+                if (lines.length < 2) return showMessage('Import Error', 'CSV format is invalid or empty.');
+                const headers = lines[0].split(',').map(h => {
+                    let val = h.replace(/"/g, '').trim();
+                    if(val === 'Make') return 'Brand'; 
+                    return val;
+                });
+                
+                const newData = [];
+                for (let i = 1; i < lines.length; i++) {
+                    const values = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(v => v.replace(/^"|"$/g, '').replace(/""/g, '"').trim());
+                    let rowObj = { inspections: [] };
+                    headers.forEach((header, index) => {
+                        if (header === 'InspectionsData') {
+                            try { if(values[index]) rowObj.inspections = JSON.parse(decodeURIComponent(atob(values[index]))); } 
+                            catch(err) { console.error('Failed to parse logs row', i); }
+                        } else {
+                            rowObj[header] = values[index] !== undefined ? values[index] : '';
+                            if (header === 'Plate') rowObj[header] = String(rowObj[header]).toUpperCase(); // Enforce uppercase
+                        }
+                    });
+                    newData.push(rowObj);
+                }
+                tableData = newData;
+                currentPage = 1; currentAlertsPage = 1; currentUpcomingPage = 1; currentPersonnelPage = 1;
+                updateDashboard();
+            };
+            reader.readAsText(file);
+            e.target.value = ''; 
+        });
+
+        // ----------------------------------------------------
+        // Views Logic
+        // ----------------------------------------------------
+        function renderCalendar() {
+            const grid = document.getElementById('calendarGrid');
+            const monthYearText = document.getElementById('calendarMonthYear');
+            const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+            monthYearText.innerText = `${monthNames[currentCalMonth]} ${currentCalYear}`;
+            
+            let html = '';
+            const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            daysOfWeek.forEach(d => html += `<div class="calendar-day-name">${d}</div>`);
+            
+            const firstDayIndex = new Date(currentCalYear, currentCalMonth, 1).getDay();
+            const daysInMonth = new Date(currentCalYear, currentCalMonth + 1, 0).getDate();
+            const daysInPrevMonth = new Date(currentCalYear, currentCalMonth, 0).getDate();
+            
+            const dueMap = {};
+            tableData.forEach(row => {
+                if (!row.NextDue || row.NextDue === 'TBD') return;
+                const dateKey = getMapKey(parseDate(row.NextDue));
+                if (!dateKey) return;
+                if (!dueMap[dateKey]) dueMap[dateKey] = [];
+                dueMap[dateKey].push(row);
+            });
+            globalDueMap = dueMap;
+
+            for (let i = 0; i < firstDayIndex; i++) {
+                const dayNum = daysInPrevMonth - firstDayIndex + 1 + i;
+                html += `<div class="calendar-cell other-month"><div class="calendar-date">${dayNum}</div></div>`;
+            }
+            
+            const todayStr = getMapKey(new Date());
+
+            for (let i = 1; i <= daysInMonth; i++) {
+                const dateStr = `${currentCalYear}-${String(currentCalMonth+1).padStart(2,'0')}-${String(i).padStart(2,'0')}`;
+                const isToday = dateStr === todayStr;
+                const isSelected = dateStr === selectedDateStr;
+                
+                let cellHtml = `<div class="calendar-cell ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''}" onclick="selectCalendarDate('${dateStr}', this)">`;
+                cellHtml += `<div class="calendar-date">${i}</div>`;
+                cellHtml += `<div class="calendar-badges">`;
+                
+                if (dueMap[dateStr]) {
+                    dueMap[dateStr].forEach(v => {
+                        const s = (v.Status || '').toUpperCase();
+                        const isOverdue = s === 'OVERDUE' || s === 'FAILED';
+                        const badgeClass = isOverdue ? (s === 'FAILED' ? 'due-badge critical' : 'due-badge warning') : 'due-badge';
+                        cellHtml += `<div class="${badgeClass} action-history" data-plate="${escapeHTML(v.Plate)}" style="cursor:pointer;" title="${escapeHTML(v.Brand)} ${escapeHTML(v.Model)}" onclick="event.stopPropagation(); selectCalendarDate('${dateStr}', this.parentElement.parentElement);">${escapeHTML(v.Plate)}</div>`;
+                    });
+                }
+                
+                cellHtml += `</div></div>`;
+                html += cellHtml;
+            }
+            
+            const totalCells = firstDayIndex + daysInMonth;
+            const nextDays = Math.ceil(totalCells / 7) * 7 - totalCells;
+            for (let i = 1; i <= nextDays; i++) html += `<div class="calendar-cell other-month"><div class="calendar-date">${i}</div></div>`;
+            
+            grid.innerHTML = html;
+            
+            if(selectedDateStr) updateSelectedDatePanel(selectedDateStr, dueMap[selectedDateStr] || []);
+            else updateSelectedDatePanel(todayStr, dueMap[todayStr] || []);
+        }
+
+        window.selectCalendarDate = function(dateStr, element) {
+            selectedDateStr = dateStr;
+            document.querySelectorAll('.calendar-cell').forEach(c => c.classList.remove('selected'));
+            if (element) {
+                const cell = element.closest('.calendar-cell');
+                if (cell) cell.classList.add('selected');
+            }
+            updateSelectedDatePanel(selectedDateStr, globalDueMap[selectedDateStr] || []);
+        };
+
+        function updateSelectedDatePanel(dateStr, vehiclesDue) {
+            const displayEl = document.getElementById('selectedDateDisplay');
+            const detailsEl = document.getElementById('calendarDayDetails');
+            
+            const [y, m, d] = dateStr.split('-');
+            const displayDate = new Date(y, m-1, d);
+            displayEl.innerText = formatDateSafe(displayDate);
+            
+            if (vehiclesDue.length === 0) {
+                detailsEl.innerHTML = '<div style="color: var(--text-muted); padding: 2rem; text-align: center;">No inspections due on this date.</div>';
+                return;
+            }
+            
+            let html = '';
+            vehiclesDue.forEach(v => {
+                const s = (v.Status || '').toUpperCase();
+                const isOverdue = s === 'OVERDUE' || s === 'FAILED';
+                const iconClass = isOverdue ? (s === 'FAILED' ? 'critical' : 'warning') : 'info';
+                html += `
+                <div class="alert-item interactive action-history" data-plate="${escapeHTML(v.Plate)}" style="border-bottom: 1px solid var(--border-color); padding-bottom:1rem;">
+                    <div class="alert-icon ${iconClass}">
+                        <svg width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path></svg>
+                    </div>
+                    <div class="alert-content" style="flex:1;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <span class="alert-title" style="font-size:0.9rem;">${escapeHTML(v.Plate)}</span>
+                            <button class="btn-action action-inspect" data-plate="${escapeHTML(v.Plate)}" onclick="event.stopPropagation();" style="background:transparent; border:1px solid var(--border-color); color:var(--text-secondary); border-radius:3px; padding:3px 8px; cursor:pointer; font-size:0.7rem; transition:0.2s;">Inspect</button>
+                        </div>
+                        <span class="alert-time" style="display:block; margin-top:2px;">${escapeHTML(v.Brand)} ${escapeHTML(v.Model)}</span>
+                        <span class="alert-time" style="display:block; margin-top:2px; font-weight:600; color:var(--text-secondary);">STATUS: ${escapeHTML(v.Status)}</span>
+                    </div>
+                </div>
+                `;
+            });
+            detailsEl.innerHTML = html;
+        }
+
+        document.getElementById('prevMonthBtn').addEventListener('click', () => { currentCalMonth--; if (currentCalMonth < 0) { currentCalMonth = 11; currentCalYear--; } renderCalendar(); });
+        document.getElementById('nextMonthBtn').addEventListener('click', () => { currentCalMonth++; if (currentCalMonth > 11) { currentCalMonth = 0; currentCalYear++; } renderCalendar(); });
+
+        function renderFleet() {
+            const searchInput = document.getElementById('fleetSearchInput');
+            const term = searchInput ? searchInput.value.toLowerCase() : '';
+            const fleetStats = {};
+
+            tableData.forEach(v => {
+                const brand = v.Brand || 'Unknown';
+                const model = v.Model || 'Unknown';
+                const key = brand + '|' + model;
+                if (term && !brand.toLowerCase().includes(term) && !model.toLowerCase().includes(term)) return;
+
+                if (!fleetStats[key]) fleetStats[key] = { brand, model, total: 0, pass: 0, fail: 0, overdue: 0 };
+                fleetStats[key].total++;
+                const s = (v.Status || '').toUpperCase();
+                if (s === 'PASSED') fleetStats[key].pass++;
+                else if (s === 'FAILED') fleetStats[key].fail++;
+                else if (s === 'OVERDUE') fleetStats[key].overdue++;
+            });
+
+            const sortedKeys = Object.keys(fleetStats).sort((a,b) => a.localeCompare(b));
+            let html = '';
+            if (sortedKeys.length === 0) html = `<tr><td colspan="7" style="text-align:center; padding: 2rem;">No fleet data found.</td></tr>`;
+            else {
+                sortedKeys.forEach(k => {
+                    const st = fleetStats[k];
+                    const passRate = st.total > 0 ? Math.round((st.pass / st.total) * 100) : 0;
+                    html += `
+                        <tr>
+                            <td class="td-highlight" style="font-weight: 600;">${escapeHTML(st.brand)}</td>
+                            <td>${escapeHTML(st.model)}</td>
+                            <td>${st.total}</td>
+                            <td style="color: var(--accent-green); font-weight: 600;">${st.pass}</td>
+                            <td style="color: var(--status-red); font-weight: 600;">${st.fail}</td>
+                            <td style="color: var(--status-yellow); font-weight: 600;">${st.overdue}</td>
+                            <td>
+                                <div style="display:flex; align-items:center; gap:8px;">
+                                    <span style="width: 35px; font-weight: 600;">${passRate}%</span>
+                                    <div style="flex:1; height:6px; background:rgba(255,255,255,0.1); border-radius:3px; overflow:hidden; max-width: 100px;">
+                                        <div style="height:100%; width:${passRate}%; background:var(--accent-green);"></div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+            const tbody = document.getElementById('fleetTableBody');
+            if (tbody) tbody.innerHTML = html;
+        }
+
+        function renderFleetList() {
+            let filtered = tableData.filter(row => {
+                const matchSearch = Object.values(row).some(val => String(val).toLowerCase().includes(fleetListSearchTerm.toLowerCase()));
+                const matchStatus = fleetListStatusFilter === 'ALL' || (row.Status || '').toUpperCase() === fleetListStatusFilter;
+                return matchSearch && matchStatus;
+            });
+
+            if (fleetListSortCol) {
+                filtered.sort((a, b) => {
+                    let valA = a[fleetListSortCol] || ''; let valB = b[fleetListSortCol] || '';
+                    if (fleetListSortCol === 'Brand') { valA = (a.Brand || '') + ' ' + (a.Model || ''); valB = (b.Brand || '') + ' ' + (b.Model || ''); }
+                    if (valA < valB) return fleetListSortAsc ? -1 : 1; if (valA > valB) return fleetListSortAsc ? 1 : -1; return 0;
+                });
+            }
+
+            const totalItems = filtered.length;
+            const totalPages = Math.ceil(totalItems / fleetListItemsPerPage) || 1;
+            if (fleetListPage > totalPages) fleetListPage = totalPages;
+
+            const start = (fleetListPage - 1) * fleetListItemsPerPage;
+            const end = start + fleetListItemsPerPage;
+            const paginated = filtered.slice(start, end);
+
+            const tbody = document.getElementById('fleetListTableBody');
+            let html = '';
+            if (paginated.length === 0) {
+                html = `<tr><td colspan="6" style="text-align:center; padding: 2rem;">No vehicles found.</td></tr>`;
+            } else {
+                paginated.forEach(row => {
+                    const s = (row.Status || '').trim().toUpperCase();
+                    let statusColor = 'var(--text-muted)', statusBg = 'rgba(107, 114, 128, 0.15)', borderColor = 'rgba(107, 114, 128, 0.3)';
+                    if (s === 'PASSED') { statusColor = 'var(--accent-green)'; statusBg = 'rgba(34, 197, 94, 0.15)'; borderColor = 'rgba(34, 197, 94, 0.3)'; }
+                    else if (s === 'FAILED') { statusColor = 'var(--status-red)'; statusBg = 'rgba(239, 68, 68, 0.15)'; borderColor = 'rgba(239, 68, 68, 0.3)'; }
+                    else if (s === 'OVERDUE') { statusColor = 'var(--status-yellow)'; statusBg = 'rgba(245, 158, 11, 0.15)'; borderColor = 'rgba(245, 158, 11, 0.3)'; }
+
+                    html += `
+                        <tr>
+                            <td class="td-highlight">${escapeHTML(row.Brand)} ${escapeHTML(row.Model)}</td>
+                            <td>${escapeHTML(row.Year)}</td>
+                            <td class="td-highlight" style="font-family: monospace;">${escapeHTML(row.Plate)}</td>
+                            <td>${escapeHTML(row.Driver || '-')}</td>
+                            <td><div class="status-badge"><div class="status-ring" style="border-color: ${statusColor};"><div style="width: 6px; height: 6px; border-radius: 50%; background-color: ${statusColor};"></div></div><span class="status-text" style="color: ${statusColor}; background-color: ${statusBg}; border-color: ${borderColor};">${escapeHTML(s) || 'N/A'}</span></div></td>
+                            <td style="text-align: right;">
+                                <button class="btn-outline btn-action danger action-remove-vehicle" data-plate="${escapeHTML(row.Plate)}" title="Remove Vehicle">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg> Remove
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+            tbody.innerHTML = html;
+
+            document.getElementById('fleetListInfo').innerText = totalItems === 0 ? 'Showing 0 to 0 of 0 entries' : `Showing ${start + 1} to ${Math.min(end, totalItems)} of ${totalItems} entries`;
+            document.getElementById('fleetListPaginationControls').innerHTML = buildPaginationHTML(fleetListPage, totalPages, 'changeFleetListPage');
+
+            document.querySelectorAll('.fleet-list-sortable').forEach(th => {
+                const icon = th.querySelector('.sort-icon');
+                if(th.dataset.sort === fleetListSortCol) { icon.innerHTML = fleetListSortAsc ? '▲' : '▼'; icon.style.color = 'var(--accent-teal)'; }
+                else { icon.innerHTML = '↕'; icon.style.color = 'var(--text-muted)'; }
+            });
+        }
+
+        window.changeFleetListPage = function(p) { fleetListPage = p; renderFleetList(); };
+        
+        const fleetSearchEl = document.getElementById('fleetSearchInput');
+        if (fleetSearchEl) fleetSearchEl.addEventListener('input', renderFleet);
+
+        const fleetListSearchEl = document.getElementById('fleetListSearchInput');
+        if (fleetListSearchEl) fleetListSearchEl.addEventListener('input', e => { fleetListSearchTerm = e.target.value; fleetListPage = 1; renderFleetList(); });
+        
+        const fleetListStatusEl = document.getElementById('fleetListStatusFilter');
+        if (fleetListStatusEl) fleetListStatusEl.addEventListener('change', e => { fleetListStatusFilter = e.target.value; fleetListPage = 1; renderFleetList(); });
+
+        document.querySelectorAll('.fleet-list-sortable').forEach(th => {
+            th.addEventListener('click', () => {
+                const col = th.dataset.sort;
+                if (fleetListSortCol === col) fleetListSortAsc = !fleetListSortAsc; else { fleetListSortCol = col; fleetListSortAsc = true; }
+                renderFleetList();
+            });
+        });
+
+        function renderTable() {
+            let filteredData = tableData.filter(row => {
+                const matchesSearch = Object.values(row).some(val => String(val).toLowerCase().includes(searchTerm.toLowerCase()));
+                const matchesStatus = statusFilter === 'ALL' || (row.Status || '').toUpperCase() === statusFilter;
+                return matchesSearch && matchesStatus;
+            });
+
+            if (sortCol) {
+                filteredData.sort((a, b) => {
+                    let valA = a[sortCol] || ''; let valB = b[sortCol] || '';
+                    if (sortCol === 'Brand') { valA = (a.Brand || '') + ' ' + (a.Model || ''); valB = (b.Brand || '') + ' ' + (b.Model || ''); } 
+                    else if (sortCol === 'LastInspected' || sortCol === 'NextDue') { valA = parseDate(valA).getTime() || 0; valB = parseDate(valB).getTime() || 0; }
+                    if (valA < valB) return sortAsc ? -1 : 1; if (valA > valB) return sortAsc ? 1 : -1; return 0;
+                });
+            }
+
+            const totalItems = filteredData.length;
+            const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
+            if (currentPage > totalPages) currentPage = totalPages;
+            
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const paginatedData = filteredData.slice(startIndex, endIndex);
+
+            const tbody = document.getElementById('tableBody');
+            let rowsHtml = '';
+            
+            if (paginatedData.length === 0) rowsHtml = `<tr><td colspan="9" style="text-align:center; padding: 2rem;">No matching vehicles found.</td></tr>`;
+            else {
+                paginatedData.forEach(row => {
+                    const statusStr = (row.Status || '').trim();
+                    const isPass = statusStr.toUpperCase() === 'PASSED';
+                    const isFail = statusStr.toUpperCase() === 'FAILED';
+                    const isOverdue = statusStr.toUpperCase() === 'OVERDUE';
+                    
+                    let statusColor = 'var(--text-muted)', statusBg = 'rgba(107, 114, 128, 0.15)', borderColor = 'rgba(107, 114, 128, 0.3)';
+                    if (isPass) { statusColor = 'var(--accent-green)'; statusBg = 'rgba(34, 197, 94, 0.15)'; borderColor = 'rgba(34, 197, 94, 0.3)'; } 
+                    else if (isFail) { statusColor = 'var(--status-red)'; statusBg = 'rgba(239, 68, 68, 0.15)'; borderColor = 'rgba(239, 68, 68, 0.3)'; } 
+                    else if (isOverdue) { statusColor = 'var(--status-yellow)'; statusBg = 'rgba(245, 158, 11, 0.15)'; borderColor = 'rgba(245, 158, 11, 0.3)'; }
+
+                    rowsHtml += `
+                        <tr>
+                            <td><input type="checkbox" class="custom-checkbox row-checkbox" value="${escapeHTML(row.Plate)}" onchange="updateDeleteBtnVisibility()"></td>
+                            <td class="td-highlight">${escapeHTML(row.Brand)} ${escapeHTML(row.Model)}</td>
+                            <td>${escapeHTML(row.Year)}</td>
+                            <td class="td-highlight" style="font-family: monospace;">${escapeHTML(row.Plate)}</td>
+                            <td>${escapeHTML(row.Driver || '-')}</td>
+                            <td>${escapeHTML(row.LastInspected)}</td>
+                            <td style="${row.NextDue === 'TBD' ? 'color: var(--status-red); font-weight: bold;' : ''}">${escapeHTML(row.NextDue)}</td>
+                            <td><div class="status-badge"><div class="status-ring" style="border-color: ${statusColor};"><div style="width: 6px; height: 6px; border-radius: 50%; background-color: ${statusColor};"></div></div><span class="status-text" style="color: ${statusColor}; background-color: ${statusBg}; border-color: ${borderColor};">${escapeHTML(statusStr) || 'N/A'}</span></div></td>
+                            <td>
+                                <div class="actions-cell">
+                                    <button class="btn-outline btn-action action-history" data-plate="${escapeHTML(row.Plate)}" title="History"><svg style="width: 12px; height: 12px; margin-right: 4px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> History</button>
+                                    <button class="btn-outline btn-action action-inspect" data-plate="${escapeHTML(row.Plate)}" title="Inspect"><svg style="width: 12px; height: 12px; margin-right: 4px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg> Inspect</button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+            tbody.innerHTML = rowsHtml;
+            document.getElementById('selectAllCheckbox').checked = false;
+            updateDeleteBtnVisibility();
+
+            const infoSpan = document.getElementById('tableInfo');
+            if (totalItems === 0) infoSpan.innerText = `Showing 0 to 0 of 0 entries`;
+            else infoSpan.innerText = `Showing ${startIndex + 1} to ${Math.min(endIndex, totalItems)} of ${totalItems} entries`;
+            
+            document.getElementById('paginationControls').innerHTML = buildPaginationHTML(currentPage, totalPages, 'changePage');
+
+            document.querySelectorAll('.sortable').forEach(th => {
+                const icon = th.querySelector('.sort-icon');
+                if(th.dataset.sort === sortCol) { icon.innerHTML = sortAsc ? '▲' : '▼'; icon.style.color = 'var(--accent-teal)'; } 
+                else { icon.innerHTML = '↕'; icon.style.color = 'var(--text-muted)'; }
+            });
+        }
+
+        window.changePage = function(p) { currentPage = p; renderTable(); };
+        document.getElementById('searchInput').addEventListener('input', e => { searchTerm = e.target.value; currentPage = 1; renderTable(); });
+        document.getElementById('statusFilter').addEventListener('change', e => { statusFilter = e.target.value; currentPage = 1; renderTable(); });
+        document.querySelectorAll('.sortable').forEach(th => {
+            th.addEventListener('click', () => {
+                const col = th.dataset.sort;
+                if (sortCol === col) sortAsc = !sortAsc; else { sortCol = col; sortAsc = true; }
+                renderTable();
+            });
+        });
+
+        function renderAlerts() {
+            const total = filteredAlerts.length;
+            const totalPages = Math.ceil(total / sideItemsPerPage) || 1;
+            if (currentAlertsPage > totalPages) currentAlertsPage = totalPages;
+            
+            const start = (currentAlertsPage - 1) * sideItemsPerPage;
+            const end = start + sideItemsPerPage;
+            const paginated = filteredAlerts.slice(start, end);
+            
+            const alertListEl = document.getElementById('recentAlertsList');
+            if (paginated.length === 0) alertListEl.innerHTML = '<div style="color: var(--text-muted); padding: 1rem; text-align: center;">No active issues.</div>';
+            else {
+                alertListEl.innerHTML = paginated.map(row => {
+                    const isCritical = row.Status.toUpperCase() === 'FAILED';
+                    return `
+                    <div class="alert-item interactive action-history" data-plate="${escapeHTML(row.Plate)}">
+                        <div class="alert-icon ${isCritical ? 'critical' : 'warning'}">!</div>
+                        <div class="alert-content">
+                            <span class="alert-title">${isCritical ? 'Failed Inspection' : 'Overdue'} - ${escapeHTML(row.Plate)}</span>
+                            <span class="alert-time">${escapeHTML(row.Brand)} ${escapeHTML(row.Model)} (${escapeHTML(isCritical ? row.LastInspected : row.NextDue)})</span>
+                        </div>
+                    </div>`;
+                }).join('');
+            }
+            document.getElementById('alertsInfo').innerText = total > 0 ? `${start + 1}-${Math.min(end, total)} of ${total}` : '0 entries';
+            document.getElementById('alertsPaginationControls').innerHTML = buildSimplePaginationHTML(currentAlertsPage, totalPages, 'changeAlertsPage');
+        }
+
+        function renderUpcoming() {
+            const total = filteredUpcoming.length;
+            const totalPages = Math.ceil(total / sideItemsPerPage) || 1;
+            if (currentUpcomingPage > totalPages) currentUpcomingPage = totalPages;
+            
+            const start = (currentUpcomingPage - 1) * sideItemsPerPage;
+            const end = start + sideItemsPerPage;
+            const paginated = filteredUpcoming.slice(start, end);
+            
+            const timelineEl = document.getElementById('upcomingInspectionsList');
+            timelineEl.className = 'alert-list';
+            if (paginated.length === 0) timelineEl.innerHTML = '<div style="color: var(--text-muted); padding: 1rem; text-align: center;">No upcoming inspections.</div>';
+            else {
+                timelineEl.innerHTML = paginated.map((row, idx) => {
+                    const dueStr = parseDate(row.NextDue).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+                    return `
+                    <div class="alert-item interactive action-history" data-plate="${escapeHTML(row.Plate)}" style="align-items: center; justify-content: space-between; ${idx === paginated.length - 1 ? 'border-bottom: none; padding-bottom: 0;' : ''}">
+                        <div class="alert-content" style="flex: 1;">
+                            <span class="alert-title" style="font-size:0.9rem; color:var(--accent-teal);">${escapeHTML(row.Plate)}</span>
+                            <span class="alert-time" style="display:block; margin-top:2px;">${escapeHTML(row.Brand)} ${escapeHTML(row.Model)}</span>
+                        </div>
+                        <div style="text-align: right;">
+                            <span style="display:block; font-size:0.7rem; color:var(--text-muted); margin-bottom: 2px;">Due Date</span>
+                            <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary);">${dueStr}</span>
+                        </div>
+                    </div>`;
+                }).join('');
+            }
+            document.getElementById('upcomingInfo').innerText = total > 0 ? `${start + 1}-${Math.min(end, total)} of ${total}` : '0 entries';
+            document.getElementById('upcomingPaginationControls').innerHTML = buildSimplePaginationHTML(currentUpcomingPage, totalPages, 'changeUpcomingPage');
+        }
+
+        window.changeAlertsPage = function(p) { currentAlertsPage = p; renderAlerts(); };
+        window.changeUpcomingPage = function(p) { currentUpcomingPage = p; renderUpcoming(); };
+        window.changePersonnelPage = function(p) { currentPersonnelPage = p; renderPersonnel(); };
+        window.changeDriverPage = function(p) { currentDriverPage = p; renderDriver(); };
+
+        document.getElementById('inspectorSearchInput').addEventListener('input', e => { inspectorSearchTerm = e.target.value; currentPersonnelPage = 1; renderPersonnel(); });
+
+        function renderPersonnel() {
+            const allInspections = extractAllInspections();
+            const inspectorStats = {};
+            
+            allInspections.forEach(insp => {
+                let name = insp.inspector || 'Unknown';
+                if(!inspectorStats[name]) inspectorStats[name] = { total: 0, pass: 0, fail: 0, lastActive: null };
+                inspectorStats[name].total++;
+                if((insp.status || '').toUpperCase() === 'PASSED') inspectorStats[name].pass++; else inspectorStats[name].fail++;
+                let d = new Date(insp.date);
+                if(!inspectorStats[name].lastActive || d > inspectorStats[name].lastActive) inspectorStats[name].lastActive = d;
+            });
+
+            const tbody = document.getElementById('inspectorTableBody');
+            const inspectorNames = Object.keys(inspectorStats).sort();
+            
+            let html = '';
+            if (inspectorNames.length === 0) html = `<tr><td colspan="6" style="text-align:center; padding: 2rem;">No inspection data available.</td></tr>`;
+            else {
+                inspectorNames.forEach(name => {
+                    const stats = inspectorStats[name];
+                    const passRate = stats.total > 0 ? Math.round((stats.pass / stats.total) * 100) : 0;
+                    let lastActiveStr = stats.lastActive ? stats.lastActive.toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }) : 'N/A';
+                    html += `
+                        <tr>
+                            <td class="td-highlight" style="font-weight: 600;">${escapeHTML(name)}</td>
+                            <td>${stats.total}</td>
+                            <td style="color: var(--accent-green); font-weight: 600;">${stats.pass}</td>
+                            <td style="color: var(--status-red); font-weight: 600;">${stats.fail}</td>
+                            <td>
+                                <div style="display:flex; align-items:center; gap:8px;">
+                                    <span style="width: 35px; font-weight: 600;">${passRate}%</span>
+                                    <div style="flex:1; height:6px; background:rgba(255,255,255,0.1); border-radius:3px; overflow:hidden; max-width: 100px;">
+                                        <div style="height:100%; width:${passRate}%; background:var(--accent-green);"></div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td style="color: var(--text-secondary);">${lastActiveStr}</td>
+                        </tr>
+                    `;
+                });
+            }
+            tbody.innerHTML = html;
+
+            let filteredActivities = allInspections;
+            if(inspectorSearchTerm) filteredActivities = allInspections.filter(insp => (insp.inspector || '').toLowerCase().includes(inspectorSearchTerm.toLowerCase()));
+            const total = filteredActivities.length;
+            const totalPages = Math.ceil(total / personnelActivitiesPerPage) || 1;
+            if (currentPersonnelPage > totalPages) currentPersonnelPage = totalPages;
+            const start = (currentPersonnelPage - 1) * personnelActivitiesPerPage;
+            const paginatedActivities = filteredActivities.slice(start, start + personnelActivitiesPerPage);
+
+            const activitiesEl = document.getElementById('personnelActivitiesList');
+            if (paginatedActivities.length === 0) activitiesEl.innerHTML = '<div style="color: var(--text-muted); padding: 1rem; text-align: center;">No recent activities.</div>';
+            else {
+                activitiesEl.innerHTML = paginatedActivities.map(insp => {
+                    const isFail = (insp.status || '').toUpperCase() === 'FAILED';
+                    const iconStyle = !isFail ? 'background-color: rgba(34, 197, 94, 0.2); color: var(--accent-green); border: 1px solid var(--accent-green);' : '';
+                    const iconSvg = isFail ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>` : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+                    return `
+                    <div class="alert-item interactive action-history" data-plate="${escapeHTML(insp.vehiclePlate)}" style="border-bottom: 1px solid var(--border-color); padding-bottom:1rem;">
+                        <div class="alert-icon ${isFail ? 'critical' : ''}" style="${iconStyle}">${iconSvg}</div>
+                        <div class="alert-content" style="flex:1;">
+                            <span class="alert-title" style="font-size:0.9rem; color:var(--accent-teal);">${escapeHTML(insp.inspector)}</span>
+                            <span class="alert-time" style="display:block; margin-top:2px; color:var(--text-primary);">Inspected <strong>${escapeHTML(insp.vehiclePlate)}</strong></span>
+                            <span class="alert-time" style="display:block; margin-top:2px;">${escapeHTML(insp.vehicleMakeModel)}</span>
+                            <div style="display:flex; justify-content:space-between; margin-top:4px;">
+                                <span class="alert-time" style="font-size:0.7rem;">${escapeHTML(new Date(insp.date).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }))}</span>
+                                <span style="font-size:0.7rem; font-weight:600; color:${isFail ? 'var(--status-red)' : 'var(--accent-green)'}">${escapeHTML(insp.status).toUpperCase()}</span>
+                            </div>
+                        </div>
+                    </div>`;
+                }).join('');
+            }
+
+            document.getElementById('personnelActivitiesInfo').innerText = total > 0 ? `${start + 1}-${Math.min(start + personnelActivitiesPerPage, total)} of ${total}` : '0 entries';
+            document.getElementById('personnelActivitiesPaginationControls').innerHTML = buildSimplePaginationHTML(currentPersonnelPage, totalPages, 'changePersonnelPage');
+
+            if(personnelChart) {
+                personnelChart.data.labels = inspectorNames;
+                personnelChart.data.datasets[0].data = inspectorNames.map(n => inspectorStats[n].pass);
+                personnelChart.data.datasets[1].data = inspectorNames.map(n => inspectorStats[n].fail);
+                personnelChart.update();
+            }
+        }
+
+        document.getElementById('driverSearchInput').addEventListener('input', e => { driverSearchTerm = e.target.value; currentDriverPage = 1; renderDriver(); });
+
+        function renderDriver() {
+            const allInspections = extractAllInspections();
+            const driverStats = {};
+            
+            allInspections.forEach(insp => {
+                let name = insp.driver || 'Unknown';
+                if(!driverStats[name]) driverStats[name] = { total: 0, pass: 0, fail: 0, lastActive: null };
+                driverStats[name].total++;
+                if((insp.status || '').toUpperCase() === 'PASSED') driverStats[name].pass++; else driverStats[name].fail++;
+                let d = new Date(insp.date);
+                if(!driverStats[name].lastActive || d > driverStats[name].lastActive) driverStats[name].lastActive = d;
+            });
+
+            const tbody = document.getElementById('driverTableBody');
+            const driverNames = Object.keys(driverStats).sort();
+            
+            let html = '';
+            if (driverNames.length === 0) html = `<tr><td colspan="6" style="text-align:center; padding: 2rem;">No driver data available.</td></tr>`;
+            else {
+                driverNames.forEach(name => {
+                    const stats = driverStats[name];
+                    const passRate = stats.total > 0 ? Math.round((stats.pass / stats.total) * 100) : 0;
+                    let lastActiveStr = stats.lastActive ? stats.lastActive.toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }) : 'N/A';
+                    html += `
+                        <tr>
+                            <td class="td-highlight" style="font-weight: 600;">${escapeHTML(name)}</td>
+                            <td>${stats.total}</td>
+                            <td style="color: var(--accent-green); font-weight: 600;">${stats.pass}</td>
+                            <td style="color: var(--status-red); font-weight: 600;">${stats.fail}</td>
+                            <td>
+                                <div style="display:flex; align-items:center; gap:8px;">
+                                    <span style="width: 35px; font-weight: 600;">${passRate}%</span>
+                                    <div style="flex:1; height:6px; background:rgba(255,255,255,0.1); border-radius:3px; overflow:hidden; max-width: 100px;">
+                                        <div style="height:100%; width:${passRate}%; background:var(--accent-green);"></div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td style="color: var(--text-secondary);">${lastActiveStr}</td>
+                        </tr>
+                    `;
+                });
+            }
+            tbody.innerHTML = html;
+
+            let filteredActivities = allInspections;
+            if(driverSearchTerm) filteredActivities = allInspections.filter(insp => (insp.driver || '').toLowerCase().includes(driverSearchTerm.toLowerCase()));
+            const total = filteredActivities.length;
+            const totalPages = Math.ceil(total / driverActivitiesPerPage) || 1;
+            if (currentDriverPage > totalPages) currentDriverPage = totalPages;
+            const start = (currentDriverPage - 1) * driverActivitiesPerPage;
+            const paginatedActivities = filteredActivities.slice(start, start + driverActivitiesPerPage);
+
+            const activitiesEl = document.getElementById('driverActivitiesList');
+            if (paginatedActivities.length === 0) activitiesEl.innerHTML = '<div style="color: var(--text-muted); padding: 1rem; text-align: center;">No recent activities.</div>';
+            else {
+                activitiesEl.innerHTML = paginatedActivities.map(insp => {
+                    const isFail = (insp.status || '').toUpperCase() === 'FAILED';
+                    const iconStyle = !isFail ? 'background-color: rgba(34, 197, 94, 0.2); color: var(--accent-green); border: 1px solid var(--accent-green);' : '';
+                    const iconSvg = isFail ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>` : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+                    return `
+                    <div class="alert-item interactive action-history" data-plate="${escapeHTML(insp.vehiclePlate)}" style="border-bottom: 1px solid var(--border-color); padding-bottom:1rem;">
+                        <div class="alert-icon ${isFail ? 'critical' : ''}" style="${iconStyle}">${iconSvg}</div>
+                        <div class="alert-content" style="flex:1;">
+                            <span class="alert-title" style="font-size:0.9rem; color:var(--accent-teal);">${escapeHTML(insp.driver || 'Unknown')}</span>
+                            <span class="alert-time" style="display:block; margin-top:2px; color:var(--text-primary);">Drove <strong>${escapeHTML(insp.vehiclePlate)}</strong></span>
+                            <span class="alert-time" style="display:block; margin-top:2px;">${escapeHTML(insp.vehicleMakeModel)}</span>
+                            <div style="display:flex; justify-content:space-between; margin-top:4px;">
+                                <span class="alert-time" style="font-size:0.7rem;">${escapeHTML(new Date(insp.date).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }))}</span>
+                                <span style="font-size:0.7rem; font-weight:600; color:${isFail ? 'var(--status-red)' : 'var(--accent-green)'}">${escapeHTML(insp.status).toUpperCase()}</span>
+                            </div>
+                        </div>
+                    </div>`;
+                }).join('');
+            }
+
+            document.getElementById('driverActivitiesInfo').innerText = total > 0 ? `${start + 1}-${Math.min(start + driverActivitiesPerPage, total)} of ${total}` : '0 entries';
+            document.getElementById('driverActivitiesPaginationControls').innerHTML = buildSimplePaginationHTML(currentDriverPage, totalPages, 'changeDriverPage');
+
+            // TOP 5 FAILED DRIVERS LOGIC - Uses secure event delegation class action-filter-driver
+            const topFailedDrivers = Object.keys(driverStats)
+                .map(name => ({ name, fail: driverStats[name].fail, total: driverStats[name].total }))
+                .filter(d => d.fail > 0)
+                .sort((a, b) => b.fail - a.fail)
+                .slice(0, 5);
+
+            const topFailedEl = document.getElementById('topFailedDriversList');
+            if (topFailedDrivers.length === 0) {
+                topFailedEl.innerHTML = '<div style="color: var(--text-muted); padding: 1rem; text-align: center;">No failed inspection history found.</div>';
+            } else {
+                topFailedEl.innerHTML = topFailedDrivers.map(d => {
+                    return `
+                    <div class="alert-item interactive action-filter-driver" data-driver="${escapeHTML(d.name)}" style="border-bottom: 1px solid var(--border-color); padding-bottom:1rem; align-items: center;">
+                        <div class="alert-icon critical" style="background-color: rgba(239, 68, 68, 0.2); color: var(--status-red); border: 1px solid var(--status-red);">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        </div>
+                        <div class="alert-content" style="flex:1;">
+                            <span class="alert-title" style="font-size:0.9rem;">${escapeHTML(d.name)}</span>
+                            <span class="alert-time" style="display:block; margin-top:2px;">Failed Inspections: <strong style="color: var(--status-red);">${d.fail}</strong> of ${d.total}</span>
+                        </div>
+                        <div style="text-align: right;">
+                            <button class="btn-action" title="Filter by Driver">Filter</button>
+                        </div>
+                    </div>`;
+                }).join('');
+            }
+
+            if(driverChart) {
+                driverChart.data.labels = driverNames;
+                driverChart.data.datasets[0].data = driverNames.map(n => driverStats[n].pass);
+                driverChart.data.datasets[1].data = driverNames.map(n => driverStats[n].fail);
+                driverChart.update();
+            }
+        }
+
+        // ----------------------------------------------------
+        // Master Dashboard Update
+        // ----------------------------------------------------
+        function updateDashboard() {
+            const totalInspections = tableData.length;
+            let passedCount = 0, failedCount = 0, overdueCount = 0;
+            const brandCounts = {};
+            const monthCounts = {};
+            const monthsStr = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+            // Single Loop Aggregation
+            tableData.forEach(row => {
+                const s = (row.Status || '').toUpperCase();
+                if(s === 'PASSED') passedCount++; else if(s === 'FAILED') failedCount++; else if(s === 'OVERDUE') overdueCount++;
+                
+                const brand = row.Brand || 'Unknown';
+                if(!brandCounts[brand]) brandCounts[brand] = { passed: 0, issues: 0 };
+                if(s === 'PASSED') brandCounts[brand].passed++; else brandCounts[brand].issues++;
+                
+                if(row.LastInspected) {
+                    const d = parseDate(row.LastInspected);
+                    if(!isNaN(d)) {
+                        const monthYear = `${monthsStr[d.getMonth()]} ${String(d.getFullYear()).slice(-2)}`;
+                        if(!monthCounts[monthYear]) monthCounts[monthYear] = { passed: 0, failed: 0, overdue: 0, time: d.getTime() };
+                        if(s === 'PASSED') monthCounts[monthYear].passed++; else if(s === 'FAILED') monthCounts[monthYear].failed++; else if(s === 'OVERDUE') monthCounts[monthYear].overdue++;
+                    }
+                }
+            });
+
+            // Update Brand Bar Chart
+            const sortedBrands = Object.keys(brandCounts).sort((a,b) => (brandCounts[b].passed + brandCounts[b].issues) - (brandCounts[a].passed + brandCounts[a].issues)).slice(0, 6);
+            barChart.data.labels = sortedBrands.map(m => m.toUpperCase());
+            barChart.data.datasets[0].data = sortedBrands.map(m => brandCounts[m].passed);
+            barChart.data.datasets[1].data = sortedBrands.map(m => brandCounts[m].issues);
+            barChart.update();
+
+            // Update Status Donut Chart
+            donutChart.data.datasets[0].data = [passedCount, failedCount, overdueCount];
+            donutChart.update();
+            
+            const pPct = totalInspections ? ((passedCount / totalInspections) * 100).toFixed(1) : 0;
+            const fPct = totalInspections ? ((failedCount / totalInspections) * 100).toFixed(1) : 0;
+            const oPct = totalInspections ? ((overdueCount / totalInspections) * 100).toFixed(1) : 0;
+            document.getElementById('donutLegend').innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 8px; background: rgba(255,255,255,0.02); border-radius: 4px;"><span class="legend-item"><span class="legend-color" style="background:var(--accent-green)"></span> PASSED</span><span style="color:var(--text-primary); font-weight:600;">${passedCount} (${pPct}%)</span></div>
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 8px; background: rgba(255,255,255,0.02); border-radius: 4px;"><span class="legend-item"><span class="legend-color" style="background:var(--status-red)"></span> FAILED</span><span style="color:var(--text-primary); font-weight:600;">${failedCount} (${fPct}%)</span></div>
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 8px; background: rgba(255,255,255,0.02); border-radius: 4px;"><span class="legend-item"><span class="legend-color" style="background:var(--status-yellow)"></span> OVERDUE</span><span style="color:var(--text-primary); font-weight:600;">${overdueCount} (${oPct}%)</span></div>`;
+
+            // Update Area Chart
+            const sortedMonths = Object.keys(monthCounts).sort((a,b) => monthCounts[a].time - monthCounts[b].time);
+            if(sortedMonths.length > 0) {
+                areaChart.data.labels = sortedMonths;
+                areaChart.data.datasets[0].data = sortedMonths.map(m => monthCounts[m].passed);
+                areaChart.data.datasets[1].data = sortedMonths.map(m => monthCounts[m].failed);
+                areaChart.data.datasets[2].data = sortedMonths.map(m => monthCounts[m].overdue);
+            } else {
+                areaChart.data.labels = []; areaChart.data.datasets[0].data = []; areaChart.data.datasets[1].data = []; areaChart.data.datasets[2].data = [];
+            }
+            areaChart.update();
+            
+            const today = new Date();
+            today.setHours(0,0,0,0);
+            const oneMonthAgo = new Date(today);
+            oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+            const nextWeek = new Date(today);
+            nextWeek.setDate(nextWeek.getDate() + 7);
+
+            // Filter Side Lists
+            filteredAlerts = tableData.filter(row => {
+                const s = (row.Status || '').toUpperCase();
+                if (s !== 'FAILED' && s !== 'OVERDUE') return false;
+                if (s === 'OVERDUE') return true; 
+                let triggerDate = parseDate(row.LastInspected);
+                return !isNaN(triggerDate) && triggerDate >= oneMonthAgo && triggerDate <= today;
+            });
+            filteredAlerts.sort((a,b) => parseDate(b.Status.toUpperCase() === 'FAILED' ? b.LastInspected : b.NextDue) - parseDate(a.Status.toUpperCase() === 'FAILED' ? a.LastInspected : a.NextDue));
+
+            filteredUpcoming = tableData.filter(row => {
+                if (!row.NextDue || row.NextDue === 'TBD') return false;
+                const due = parseDate(row.NextDue);
+                return !isNaN(due) && due >= today;
+            });
+            filteredUpcoming.sort((a,b) => parseDate(a.NextDue) - parseDate(b.NextDue));
+
+            // Execute Page Renders
+            renderAlerts();
+            renderUpcoming();
+            renderTable();
+
+            if(document.getElementById('view-calendar').classList.contains('active')) renderCalendar();
+            if(document.getElementById('view-personnel').classList.contains('active')) renderPersonnel();
+            if(document.getElementById('view-driver').classList.contains('active')) renderDriver();
+            if(document.getElementById('view-fleet').classList.contains('active')) {
+                renderFleet();
+                renderFleetList();
+            }
+        }
+
+        // ----------------------------------------------------
+        // Initialization
+        // ----------------------------------------------------
+        document.addEventListener("DOMContentLoaded", () => {
+            buildChecklist();
+
+            const ctxArea = document.getElementById('areaChart').getContext('2d');
+            areaChart = new Chart(ctxArea, {
+                type: 'line',
+                data: { labels: [], datasets: [
+                    { label: 'Passed', data: [], borderColor: '#22c55e', backgroundColor: createGradient(ctxArea, 'rgba(34, 197, 94, 0.4)', 'rgba(34, 197, 94, 0.0)'), borderWidth: 2, fill: true, tension: 0.4, pointRadius: 4 },
+                    { label: 'Failed', data: [], borderColor: '#ef4444', backgroundColor: createGradient(ctxArea, 'rgba(239, 68, 68, 0.4)', 'rgba(239, 68, 68, 0.0)'), borderWidth: 2, fill: true, tension: 0.4, pointRadius: 4 },
+                    { label: 'Overdue', data: [], borderColor: '#f59e0b', backgroundColor: createGradient(ctxArea, 'rgba(245, 158, 11, 0.4)', 'rgba(245, 158, 11, 0.0)'), borderWidth: 2, fill: true, tension: 0.4, pointRadius: 4 }
+                ]},
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } }, x: { grid: { display: false } } }, interaction: { intersect: false, mode: 'index' } }
+            });
+
+            const ctxBar = document.getElementById('barChart').getContext('2d');
+            barChart = new Chart(ctxBar, {
+                type: 'bar',
+                data: { labels: [], datasets: [
+                    { label: 'Passed', data: [], backgroundColor: '#22c55e', barPercentage: 0.6, categoryPercentage: 0.8 },
+                    { label: 'Issues', data: [], backgroundColor: '#ef4444', barPercentage: 0.6, categoryPercentage: 0.8 }
+                ]},
+                options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { stacked: true }, y: { stacked: true, grid: { display: false } } } }
+            });
+
+            const ctxDonut = document.getElementById('donutChart').getContext('2d');
+            donutChart = new Chart(ctxDonut, {
+                type: 'doughnut',
+                data: { labels: ['Passed', 'Failed', 'Overdue'], datasets: [{ data: [], backgroundColor: ['#22c55e', '#ef4444', '#f59e0b'], borderWidth: 0, cutout: '65%' }] },
+                options: { responsive: true, maintainAspectRatio: false, layout: { padding: 10 }, plugins: { legend: { display: false } } }
+            });
+
+            const ctxPersonnel = document.getElementById('personnelChart').getContext('2d');
+            personnelChart = new Chart(ctxPersonnel, {
+                type: 'bar',
+                data: { labels: [], datasets: [
+                    { label: 'Passed', data: [], backgroundColor: '#22c55e', barPercentage: 0.6, categoryPercentage: 0.8 },
+                    { label: 'Failed', data: [], backgroundColor: '#ef4444', barPercentage: 0.6, categoryPercentage: 0.8 }
+                ]},
+                options: { indexAxis: 'x', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { stacked: true, grid: { display: false } }, y: { stacked: true, beginAtZero: true } } }
+            });
+
+            const ctxDriver = document.getElementById('driverChart').getContext('2d');
+            driverChart = new Chart(ctxDriver, {
+                type: 'bar',
+                data: { labels: [], datasets: [
+                    { label: 'Passed', data: [], backgroundColor: '#22c55e', barPercentage: 0.6, categoryPercentage: 0.8 },
+                    { label: 'Failed', data: [], backgroundColor: '#ef4444', barPercentage: 0.6, categoryPercentage: 0.8 }
+                ]},
+                options: { indexAxis: 'x', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { stacked: true, grid: { display: false } }, y: { stacked: true, beginAtZero: true } } }
+            });
+
+            updateDashboard();
+        });
+    </script>
+</body>
+</html>
