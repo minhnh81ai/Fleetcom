@@ -418,8 +418,8 @@
             <div style="width: 80px; height: 80px; background: rgba(34, 197, 94, 0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--accent-green); margin-bottom: 1.5rem;">
                 <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
             </div>
-            <h2 style="font-size: 1.5rem; margin-bottom: 0.5rem; color: var(--text-primary);">Inspection Logged</h2>
-            <p style="color: var(--text-secondary); margin-bottom: 2rem;">The vehicle records have been successfully synchronized with the cloud database.</p>
+            <h2 style="font-size: 1.5rem; margin-bottom: 0.5rem; color: var(--text-primary);">Submitted for Approval</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 2rem;">Your inspection report has been sent to the Manager Dashboard for review and approval.</p>
             
             <button class="btn-solid" onclick="switchView('view-lookup'); document.getElementById('lookupPlate').value=''; document.getElementById('lookupPlate').focus();">Scan Next Vehicle</button>
         </div>
@@ -664,12 +664,15 @@
                 details: results
             });
 
+            // Add a timestamp for the approval queue
+            updatedVehicle.pendingSubmissionTime = today.toISOString();
+
             try {
-                // Write to Firebase (merge: true updates the fields and array safely)
-                await db.collection("vehicles").doc(updatedVehicle.Plate).set(updatedVehicle, { merge: true });
+                // Write to the "Waiting Room" bucket instead of live vehicles
+                await db.collection("pending_inspections").doc(updatedVehicle.Plate).set(updatedVehicle);
                 switchView('view-success');
             } catch (error) {
-                alert("Failed to sync to database. Ensure you have an internet connection. Error: " + error.message);
+                alert("Failed to submit for approval. Ensure you have an internet connection. Error: " + error.message);
             } finally {
                 btn.classList.remove('loading');
             }
