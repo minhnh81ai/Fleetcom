@@ -157,6 +157,52 @@
             font-size: 1rem;
         }
 
+        /* --- Autocomplete Dropdown --- */
+        .autocomplete-container {
+            position: relative;
+        }
+
+        .autocomplete-list {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 0 0 8px 8px;
+            z-index: 10;
+            max-height: 250px;
+            overflow-y: auto;
+            display: none;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.5);
+            margin-top: 4px;
+        }
+
+        .autocomplete-item {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: background 0.2s;
+            font-size: 0.95rem;
+        }
+
+        .autocomplete-item:last-child {
+            border-bottom: none;
+        }
+
+        .autocomplete-item:hover, .autocomplete-item:active {
+            background: rgba(255,255,255,0.05);
+            color: var(--text-primary);
+        }
+
+        .autocomplete-item.add-new {
+            color: var(--accent-teal);
+            font-weight: 600;
+            text-align: center;
+            background: rgba(6, 182, 212, 0.1);
+        }
+
         /* --- Buttons --- */
         .btn-solid {
             background: var(--accent-green);
@@ -338,6 +384,32 @@
 </head>
 <body>
 
+    <!-- Login Overlay -->
+    <div id="loginOverlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-body); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 1rem;">
+        <div class="card" style="width: 100%; max-width: 400px; padding: 2.5rem 1.5rem; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+            <div style="text-align: center; margin-bottom: 2rem;">
+                <div class="header-logo" style="margin: 0 auto 1rem auto; width: 60px; height: 60px; font-size: 1.75rem;">F</div>
+                <h2 style="font-size: 1.25rem; letter-spacing: 1px; margin-bottom: 0.5rem;">INSPECTOR LOGIN</h2>
+                <p style="color: var(--text-muted); font-size: 0.85rem;">Enter your credentials to access the portal</p>
+            </div>
+            <form id="loginForm" style="display: flex; flex-direction: column; gap: 1.25rem;">
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="loginUsername">Username</label>
+                    <input type="text" id="loginUsername" class="input-box text-input" required placeholder="e.g. inspector1">
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="loginPassword">Password</label>
+                    <input type="password" id="loginPassword" class="input-box text-input" required placeholder="••••••••">
+                </div>
+                <div id="loginError" style="color: var(--status-red); font-size: 0.85rem; display: none; text-align: center; background: rgba(239, 68, 68, 0.1); padding: 0.75rem; border-radius: 6px; border: 1px solid rgba(239, 68, 68, 0.3);">Invalid username or password.</div>
+                <button type="submit" class="btn-solid" style="margin-top: 0.5rem;">
+                    <span class="btn-text">Secure Login</span>
+                    <div class="loader"></div>
+                </button>
+            </form>
+        </div>
+    </div>
+
     <header>
         <div class="header-logo">F</div>
         <div class="header-title">INSPECTOR PORTAL</div>
@@ -349,13 +421,14 @@
         <div id="view-lookup" class="view-section active">
             <div class="card">
                 <h2 style="font-size: 1.2rem; margin-bottom: 0.5rem;">Find Vehicle</h2>
-                <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.9rem;">Enter the license plate to pull up the vehicle profile for inspection.</p>
+                <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.9rem;">Search for a vehicle by License Plate, Brand, or Model to begin inspection.</p>
                 
                 <div id="lookupMsg" class="system-msg"></div>
 
-                <div class="form-group">
-                    <label>License Plate</label>
-                    <input type="text" id="lookupPlate" class="input-box" placeholder="e.g. XW-294-Q" autocomplete="off" autocorrect="off" autocapitalize="off">
+                <div class="form-group autocomplete-container">
+                    <label>Search Vehicle Information</label>
+                    <input type="text" id="lookupPlate" class="input-box text-input" placeholder="e.g. XW-294-Q or Ford Transit" autocomplete="off" autocorrect="off" autocapitalize="off">
+                    <div id="autocompleteList" class="autocomplete-list"></div>
                 </div>
                 
                 <button class="btn-solid" id="btnLookup" onclick="lookupVehicle()">
@@ -365,7 +438,44 @@
             </div>
         </div>
 
-        <!-- View 2: Inspection Form -->
+        <!-- View 2: Add New Vehicle Form -->
+        <div id="view-add-vehicle" class="view-section">
+            <div class="card">
+                <h2 style="font-size: 1.2rem; margin-bottom: 0.5rem;">Add New Vehicle</h2>
+                <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.9rem;">Register a new vehicle into the fleet database before inspecting.</p>
+
+                <form id="addVehicleForm">
+                    <div class="form-group">
+                        <label>License Plate</label>
+                        <input type="text" id="newPlate" class="input-box" required placeholder="e.g. XW-294-Q" autocomplete="off">
+                    </div>
+                    <div class="form-group">
+                        <label>Brand</label>
+                        <input type="text" id="newBrand" class="input-box text-input" required placeholder="e.g. Ford">
+                    </div>
+                    <div class="form-group">
+                        <label>Model</label>
+                        <input type="text" id="newModel" class="input-box text-input" required placeholder="e.g. Transit">
+                    </div>
+                    <div class="form-group">
+                        <label>Year</label>
+                        <input type="number" id="newYear" class="input-box text-input" required placeholder="e.g. 2024" min="1900" max="2100">
+                    </div>
+                    <div class="form-group">
+                        <label>Primary Driver (Optional)</label>
+                        <input type="text" id="newDriver" class="input-box text-input" placeholder="e.g. Jane Doe">
+                    </div>
+                    
+                    <button type="submit" class="btn-solid" id="btnAddVehicle">
+                        <span class="btn-text">Save & Inspect Vehicle</span>
+                        <div class="loader"></div>
+                    </button>
+                    <button type="button" class="btn-outline" onclick="switchView('view-lookup')">Cancel</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- View 3: Inspection Form -->
         <div id="view-form" class="view-section">
             
             <div class="vehicle-info">
@@ -382,11 +492,11 @@
             <div class="card" style="padding-bottom: 0.5rem;">
                 <div class="form-group">
                     <label>Inspector ID / Name</label>
-                    <input type="text" id="inspectorName" class="input-box text-input" placeholder="e.g. John Doe">
+                    <input type="text" id="inspectorName" class="input-box text-input" placeholder="e.g. John Doe" required>
                 </div>
                 <div class="form-group">
                     <label>Current Driver Name</label>
-                    <input type="text" id="driverName" class="input-box text-input" placeholder="e.g. Mike Wheeler">
+                    <input type="text" id="driverName" class="input-box text-input" placeholder="e.g. Mike Wheeler" required>
                 </div>
             </div>
 
@@ -413,7 +523,7 @@
             </form>
         </div>
 
-        <!-- View 3: Success Screen -->
+        <!-- View 4: Success Screen -->
         <div id="view-success" class="view-section" style="align-items: center; justify-content: center; flex: 1; text-align: center;">
             <div style="width: 80px; height: 80px; background: rgba(34, 197, 94, 0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--accent-green); margin-bottom: 1.5rem;">
                 <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
@@ -439,14 +549,29 @@
             appId: "1:494902372533:web:a36e0f1b507dfc3b73f6fc"
         };
 
-        // Initialize Firebase
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
+        // Database connection logic identical to Dashboard for robustness
+        let db = null;
+        let useFirebase = false;
+
+        if (firebaseConfig.apiKey !== "PASTE_YOUR_API_KEY_HERE") {
+            firebase.initializeApp(firebaseConfig);
+            db = firebase.firestore();
+            useFirebase = true;
+        }
 
         // =========================================================================
         // GLOBAL STATE & DEFINITIONS
         // =========================================================================
         let currentVehicle = null;
+        let allVehicles = []; // Local cache for autocomplete
+        
+        let systemUsers = [
+            { username: 'admin', role: 'Admin', password: 'admin123' },
+            { username: 'manager1', role: 'Manager', password: 'password123' },
+            { username: 'inspector1', role: 'Inspector', password: 'password123' } // Included for testing
+        ];
+        let currentUserRole = null;
+        let currentUserName = null;
 
         const checklistDefinition = [
             { id: 'I', title: 'TIRES & SPARES', isHeader: true, isNoGo: true, note: 'NO-GO ITEM (ENTRY DENIED)' },
@@ -469,8 +594,57 @@
         ];
 
         // =========================================================================
+        // APP LOGIC: LOGIN
+        // =========================================================================
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const userIn = document.getElementById('loginUsername').value.trim();
+            const passIn = document.getElementById('loginPassword').value;
+            const errorEl = document.getElementById('loginError');
+            const btn = this.querySelector('button[type="submit"]');
+            
+            btn.classList.add('loading');
+            errorEl.style.display = 'none';
+
+            if (useFirebase) {
+                try {
+                    const doc = await db.collection("users").doc(userIn.toLowerCase()).get();
+                    if (doc.exists && doc.data().password === passIn) {
+                        currentUserRole = doc.data().role;
+                        currentUserName = doc.data().username;
+                        document.getElementById('loginOverlay').style.display = 'none';
+                        this.reset();
+                    } else {
+                        errorEl.innerText = "Invalid username or password.";
+                        errorEl.style.display = 'block';
+                    }
+                } catch (err) {
+                    errorEl.innerText = "Login error: " + err.message;
+                    errorEl.style.display = 'block';
+                }
+            } else {
+                const validUser = systemUsers.find(u => u.username.toLowerCase() === userIn.toLowerCase() && u.password === passIn);
+                if (validUser) {
+                    currentUserRole = validUser.role;
+                    currentUserName = validUser.username;
+                    document.getElementById('loginOverlay').style.display = 'none';
+                    this.reset(); 
+                } else {
+                    errorEl.innerText = "Invalid username or password.";
+                    errorEl.style.display = 'block';
+                }
+            }
+            btn.classList.remove('loading');
+        });
+
+        // =========================================================================
         // UI HELPERS
         // =========================================================================
+        function escapeHTML(str) {
+            if (str === null || str === undefined) return '';
+            return String(str).replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag]));
+        }
+
         function switchView(viewId) {
             document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active'));
             document.getElementById(viewId).classList.add('active');
@@ -533,7 +707,6 @@
             container.innerHTML = html;
         }
 
-        // Monitors the checklist. If any item is marked FAIL, it reveals the mandatory Follow-Up Date picker
         function checkFailState() {
             let isFailed = false;
             checklistDefinition.filter(i => !i.isHeader).forEach(item => {
@@ -557,26 +730,112 @@
         }
 
         // =========================================================================
-        // APP LOGIC
+        // APP LOGIC: AUTOCOMPLETE & LOOKUP
         // =========================================================================
 
+        function setupAutocomplete() {
+            const lookupInput = document.getElementById('lookupPlate');
+            const autoList = document.getElementById('autocompleteList');
+
+            lookupInput.addEventListener('input', function() {
+                const val = this.value.trim().toLowerCase();
+                autoList.innerHTML = '';
+                
+                if (!val) {
+                    autoList.style.display = 'none';
+                    return;
+                }
+
+                // Filter vehicles by Plate, Brand, or Model
+                const matches = allVehicles.filter(v =>
+                    (v.Plate && v.Plate.toLowerCase().includes(val)) ||
+                    (v.Brand && v.Brand.toLowerCase().includes(val)) ||
+                    (v.Model && v.Model.toLowerCase().includes(val))
+                ).slice(0, 5); // Limit to top 5 results to keep mobile view clean
+
+                matches.forEach(v => {
+                    const div = document.createElement('div');
+                    div.className = 'autocomplete-item';
+                    div.innerHTML = `<strong style="font-family:monospace; color:var(--accent-teal);">${escapeHTML(v.Plate)}</strong> - ${escapeHTML(v.Brand)} ${escapeHTML(v.Model)}`;
+                    div.onclick = () => {
+                        lookupInput.value = v.Plate;
+                        autoList.style.display = 'none';
+                        lookupVehicle(); // Trigger search immediately
+                    };
+                    autoList.appendChild(div);
+                });
+
+                // Add "Create New Vehicle" Option at the bottom
+                const addDiv = document.createElement('div');
+                addDiv.className = 'autocomplete-item add-new';
+                addDiv.innerHTML = `+ Add New Vehicle "<span style="color:var(--text-primary);">${escapeHTML(val.toUpperCase())}</span>"`;
+                addDiv.onclick = () => {
+                    autoList.style.display = 'none';
+                    openAddVehicle(val.toUpperCase());
+                };
+                autoList.appendChild(addDiv);
+
+                autoList.style.display = 'block';
+            });
+
+            // Close dropdown if clicked outside
+            document.addEventListener('click', function(e) {
+                if (e.target !== lookupInput && e.target !== autoList) {
+                    autoList.style.display = 'none';
+                }
+            });
+        }
+
         async function lookupVehicle() {
-            const plateInput = document.getElementById('lookupPlate').value.trim().toUpperCase();
+            let plateInput = document.getElementById('lookupPlate').value.trim().toUpperCase();
             if (!plateInput) {
-                showMsg('lookupMsg', 'Please enter a valid license plate.', 'error');
+                showMsg('lookupMsg', 'Please enter a valid license plate or search term.', 'error');
                 return;
+            }
+
+            // Check if user hit search without clicking an exact autocomplete suggestion
+            const exactPlateMatch = allVehicles.find(v => v.Plate.toUpperCase() === plateInput);
+            if (!exactPlateMatch) {
+                const partialMatches = allVehicles.filter(v => 
+                    (v.Brand && v.Brand.toUpperCase().includes(plateInput)) || 
+                    (v.Model && v.Model.toUpperCase().includes(plateInput))
+                );
+                
+                if (partialMatches.length === 1) {
+                    // Auto-resolve to the only matching vehicle
+                    plateInput = partialMatches[0].Plate.toUpperCase();
+                    document.getElementById('lookupPlate').value = plateInput;
+                } else if (partialMatches.length > 1) {
+                    showMsg('lookupMsg', 'Multiple matches found. Please select a specific vehicle from the dropdown.', 'error');
+                    return;
+                } else {
+                    showMsg('lookupMsg', `Vehicle "${plateInput}" not found. Try adding it first.`, 'error');
+                    return;
+                }
             }
 
             const btn = document.getElementById('btnLookup');
             btn.classList.add('loading');
             hideMsg('lookupMsg');
+            document.getElementById('autocompleteList').style.display = 'none';
 
             try {
-                const doc = await db.collection("vehicles").doc(plateInput).get();
+                let docExists = false;
+                if (useFirebase) {
+                    const doc = await db.collection("vehicles").doc(plateInput).get();
+                    if (doc.exists) {
+                        currentVehicle = doc.data();
+                        docExists = true;
+                    }
+                } else {
+                    const localVeh = allVehicles.find(v => v.Plate.toUpperCase() === plateInput);
+                    if (localVeh) {
+                        currentVehicle = localVeh;
+                        docExists = true;
+                    }
+                }
                 
-                if (doc.exists) {
-                    currentVehicle = doc.data();
-                    
+                if (docExists) {
                     // Populate Form View
                     document.getElementById('infoPlate').innerText = currentVehicle.Plate;
                     document.getElementById('infoBrand').innerText = `${currentVehicle.Brand || ''} ${currentVehicle.Model || ''}`;
@@ -584,10 +843,8 @@
                     
                     document.getElementById('driverName').value = currentVehicle.Driver || '';
                     
-                    // Keep inspector name if they already typed it once
-                    if (!document.getElementById('inspectorName').value) {
-                        document.getElementById('inspectorName').value = '';
-                    }
+                    // Auto-fill logged in Inspector Name
+                    document.getElementById('inspectorName').value = currentUserName || '';
 
                     document.getElementById('inspectionForm').reset();
                     checkFailState(); // reset fail box
@@ -604,11 +861,93 @@
             }
         }
 
+        // =========================================================================
+        // APP LOGIC: ADD NEW VEHICLE
+        // =========================================================================
+        
+        function openAddVehicle(suggestedPlate) {
+            document.getElementById('addVehicleForm').reset();
+            
+            // If the user typed a valid plate format (no spaces), map it to Plate.
+            // Otherwise leave it blank for them to fill properly.
+            if (!suggestedPlate.includes(' ')) {
+                document.getElementById('newPlate').value = suggestedPlate;
+            }
+            
+            switchView('view-add-vehicle');
+        }
+
+        document.getElementById('addVehicleForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btnAddVehicle');
+            btn.classList.add('loading');
+
+            const newVehicle = {
+                Plate: document.getElementById('newPlate').value.trim().toUpperCase(),
+                Brand: document.getElementById('newBrand').value.trim(),
+                Model: document.getElementById('newModel').value.trim(),
+                Year: document.getElementById('newYear').value.trim(),
+                Driver: document.getElementById('newDriver').value.trim(),
+                LastInspected: '',
+                NextDue: formatDateSafe(new Date()), 
+                Status: 'OVERDUE', 
+                inspections: []
+            };
+
+            try {
+                if (useFirebase) {
+                    // Prevent duplicate plates
+                    const existing = await db.collection("vehicles").doc(newVehicle.Plate).get();
+                    if(existing.exists) {
+                        alert("A vehicle with this license plate already exists.");
+                        btn.classList.remove('loading');
+                        return;
+                    }
+                    // Save to Firebase
+                    await db.collection("vehicles").doc(newVehicle.Plate).set(newVehicle);
+                } else {
+                    if (allVehicles.find(v => v.Plate === newVehicle.Plate)) {
+                        alert("A vehicle with this license plate already exists locally.");
+                        btn.classList.remove('loading');
+                        return;
+                    }
+                }
+                
+                // Add to local cache for autocomplete
+                allVehicles.push(newVehicle);
+                
+                // Automatically set as current vehicle and transition to inspection form
+                currentVehicle = newVehicle;
+                document.getElementById('infoPlate').innerText = currentVehicle.Plate;
+                document.getElementById('infoBrand').innerText = `${currentVehicle.Brand} ${currentVehicle.Model}`;
+                document.getElementById('infoYear').innerText = `Year: ${currentVehicle.Year}`;
+                document.getElementById('driverName').value = currentVehicle.Driver;
+                
+                // Auto-fill logged in Inspector Name
+                document.getElementById('inspectorName').value = currentUserName || '';
+                
+                document.getElementById('inspectionForm').reset();
+                checkFailState();
+                
+                switchView('view-form');
+
+            } catch(err) {
+                alert("Error adding new vehicle: " + err.message);
+            } finally {
+                btn.classList.remove('loading');
+            }
+        });
+
         function cancelInspection() {
             currentVehicle = null;
             document.getElementById('lookupPlate').value = '';
+            document.getElementById('autocompleteList').style.display = 'none';
             switchView('view-lookup');
         }
+
+        // =========================================================================
+        // APP LOGIC: SUBMIT INSPECTION
+        // =========================================================================
 
         document.getElementById('inspectionForm').addEventListener('submit', async function(e) {
             e.preventDefault();
@@ -634,53 +973,113 @@
                 results.push({ id: item.id, status: val });
             });
 
-            // Prepare updated vehicle document
-            const updatedVehicle = { ...currentVehicle };
-            updatedVehicle.Driver = driver;
-            updatedVehicle.LastInspected = formatDateSafe(today);
+            // Prepare future vehicle document data
+            const futureVehicle = { ...currentVehicle };
+            futureVehicle.Driver = driver;
+            futureVehicle.LastInspected = formatDateSafe(today);
             
             if (isFailed) {
-                updatedVehicle.Status = 'Failed';
+                futureVehicle.Status = 'FAILED';
                 // Use the manual date provided by the inspector
                 const manualDateVal = document.getElementById('manualNextDueDate').value;
                 const parts = manualDateVal.split('-');
                 const nextDue = new Date(parts[0], parts[1] - 1, parts[2]);
-                updatedVehicle.NextDue = formatDateSafe(nextDue);
+                futureVehicle.NextDue = formatDateSafe(nextDue);
             } else {
-                updatedVehicle.Status = 'Passed';
+                futureVehicle.Status = 'PASSED';
                 // Auto-set +6 months
                 const nextDue = new Date(today);
                 nextDue.setMonth(today.getMonth() + 6);
-                updatedVehicle.NextDue = formatDateSafe(nextDue);
+                futureVehicle.NextDue = formatDateSafe(nextDue);
             }
 
             // Append to inspection history log
-            if (!updatedVehicle.inspections) updatedVehicle.inspections = [];
-            updatedVehicle.inspections.push({
+            if (!futureVehicle.inspections) futureVehicle.inspections = [];
+            futureVehicle.inspections.push({
                 date: today.toISOString(),
                 inspector: inspector,
                 driver: driver,
-                status: isFailed ? 'Failed' : 'Passed',
+                status: isFailed ? 'FAILED' : 'PASSED',
                 details: results
             });
 
-            // Add a timestamp for the approval queue
-            updatedVehicle.pendingSubmissionTime = today.toISOString();
+            const isManagerOrAdmin = (currentUserRole === 'Admin' || currentUserRole === 'Manager');
 
             try {
-                // Write to the "Waiting Room" bucket instead of live vehicles
-                await db.collection("pending_inspections").doc(updatedVehicle.Plate).set(updatedVehicle);
+                if (useFirebase) {
+                    if (isManagerOrAdmin) {
+                        // Manager/Admin bypasses the inbox, saves directly to live database
+                        await db.collection("vehicles").doc(currentVehicle.Plate).set(futureVehicle, { merge: true });
+                    } else {
+                        // Add a timestamp for the approval queue
+                        futureVehicle.pendingSubmissionTime = today.toISOString();
+                        
+                        // We use a batch write to simultaneously put the full review object in the "Waiting Room"
+                        // AND update the main vehicle document Status to "PENDING" so the dashboard reacts instantly.
+                        const batch = db.batch();
+                        
+                        const pendingRef = db.collection("pending_inspections").doc(futureVehicle.Plate);
+                        batch.set(pendingRef, futureVehicle);
+                        
+                        const baseVehicleRef = db.collection("vehicles").doc(currentVehicle.Plate);
+                        batch.set(baseVehicleRef, { 
+                            Status: 'PENDING',
+                            LastInspected: futureVehicle.LastInspected,
+                            NextDue: futureVehicle.NextDue,
+                            Driver: futureVehicle.Driver
+                        }, { merge: true });
+
+                        await batch.commit();
+                    }
+                } else {
+                    // Local fallback behavior for demo mode without DB
+                    const localVeh = allVehicles.find(v => v.Plate === currentVehicle.Plate);
+                    if (localVeh) {
+                        if (isManagerOrAdmin) {
+                            Object.assign(localVeh, futureVehicle);
+                        } else {
+                            localVeh.Status = 'PENDING';
+                            localVeh.LastInspected = futureVehicle.LastInspected;
+                            localVeh.NextDue = futureVehicle.NextDue;
+                            localVeh.Driver = futureVehicle.Driver;
+                        }
+                    }
+                }
+                
+                // Update Success Screen dynamically based on role
+                if (isManagerOrAdmin) {
+                    document.querySelector('#view-success h2').innerText = "Inspection Logged";
+                    document.querySelector('#view-success p').innerText = "Your inspection has been successfully saved to the live fleet database.";
+                } else {
+                    document.querySelector('#view-success h2').innerText = "Submitted for Approval";
+                    document.querySelector('#view-success p').innerText = "Your inspection report has been sent to the Manager Dashboard for review and approval.";
+                }
+                
                 switchView('view-success');
             } catch (error) {
-                alert("Failed to submit for approval. Ensure you have an internet connection. Error: " + error.message);
+                alert("Failed to submit. Ensure you have an internet connection. Error: " + error.message);
             } finally {
                 btn.classList.remove('loading');
             }
         });
 
-        // Init
+        // =========================================================================
+        // INIT
+        // =========================================================================
         document.addEventListener("DOMContentLoaded", () => {
             buildMobileChecklist();
+            setupAutocomplete();
+            
+            // Pre-fetch vehicle directory for snappy autocomplete
+            if (useFirebase) {
+                db.collection("vehicles").get().then(snapshot => {
+                    snapshot.forEach(doc => {
+                        allVehicles.push(doc.data());
+                    });
+                }).catch(err => {
+                    console.log("Could not load vehicles for autocomplete (Offline mode?):", err);
+                });
+            }
             
             // Simple enter key listener for search box
             document.getElementById('lookupPlate').addEventListener('keypress', function(e) {
